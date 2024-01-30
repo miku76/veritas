@@ -1,0 +1,929 @@
+---
+queries:
+  
+  nb.changes: >
+    query Changes(
+          $get_time: Boolean = false,
+          $get_user_name: Boolean = false,
+          $get_action: Boolean = false,
+          $get_changed_object_id: Boolean = false,
+          $get_change_context_detail: Boolean = false,
+          $get_object_type: Boolean = false,
+          $get_object_repr: Boolean = false,
+          __query_vars__
+        ) {
+        object_changes (__changes_params__) {
+          time @include(if: $get_time)
+          user_name @include(if: $get_user_name)
+          action @include(if: $get_action)
+          changed_object_id @include(if: $get_changed_object_id)
+          changed_object_type @include(if: $get_object_type) 
+          { 
+            model 
+          }
+          object_repr @include(if: $get_object_repr) 
+          change_context_detail @include(if: $get_change_context_detail)
+        }
+    }
+
+  nb.prefixes: >
+    query Prefix(
+        $get_cf: Boolean = false,
+        $get_custom_field_data: Boolean = false,
+        $get__custom_field_data: Boolean = false,
+        $get_config_context: Boolean = false,
+        $get_device_type: Boolean = false,
+        $get_description: Boolean = false,
+        $get_hostname: Boolean = false,
+        $get_id: Boolean = false,
+        $get_ip_addresses: Boolean = false,
+        $get_interfaces: Boolean = false,
+        $get_location: Boolean = false,
+        $get_name: Boolean = false,
+        $get_namespace: Boolean = false,
+        $get_parent: Boolean = false,
+        $get_platform: Boolean = false,
+        $get_primary_ip4_for: Boolean = false,
+        $get_prefix: Boolean = false,
+        $get_prefix_length: Boolean = false, 
+        $get_role: Boolean = false,
+        $get_serial: Boolean = false,
+        $get_status: Boolean = false,        
+        $get_tags: Boolean = false, 
+        $get_tenant: Boolean = false,
+        $get_type: Boolean = false,
+        __query_vars__
+      ) {
+      prefixes (__prefixes_params__) {
+        id @include(if: $get_id)
+        prefix @include(if: $get_prefix)
+        prefix_length @include(if: $get_prefix_length)
+        parent @include(if: $get_parent) {
+          id @include(if: $get_id)
+          prefix
+        }
+        namespace @include(if: $get_namespace) {
+          id @include(if: $get_id)
+          name
+        }
+        description @include(if: $get_description)
+        type @include(if: $get_type)
+        location @include(if: $get_location) {
+          id @include(if: $get_id)
+          name
+        }
+        _custom_field_data @include(if: $get_cf)
+        _custom_field_data @include(if: $get__custom_field_data)
+        custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+        ip_addresses @include(if: $get_ip_addresses) 
+        {
+          id @include(if: $get_id)
+          address
+          primary_ip4_for(__primaryip4for_params__) @include(if: $get_primary_ip4_for) 
+          {
+            id @include(if: $get_id)
+            name @include(if: $get_name)
+            hostname: name @include(if: $get_hostname)
+            role @include(if: $get_role) 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            device_type @include(if: $get_device_type) 
+            {
+              id @include(if: $get_id)
+              model
+            }
+            platform @include(if: $get_platform) 
+            {
+              name
+              manufacturer {
+                id @include(if: $get_id)
+                name
+              }
+            }
+            tags @include(if: $get_tags) 
+            {
+              name
+              content_types {
+                id @include(if: $get_id)
+                app_label
+                model
+              }
+            }
+            tenant @include(if: $get_tenant) 
+            {
+              name
+              tenant_group 
+              {
+                id @include(if: $get_id)
+                name
+              }
+            }
+            serial @include(if: $get_serial)
+            status @include(if: $get_status) 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            config_context @include(if: $get_config_context)
+            _custom_field_data @include(if: $get_cf)
+            interfaces @include(if: $get_interfaces) 
+            {
+              id @include(if: $get_id)
+              name
+              device 
+              {
+                id @include(if: $get_id)
+                name
+              }
+              description
+              enabled
+              mac_address
+              type
+              mode
+              ip_addresses 
+              {
+                address
+                role 
+                {
+                  id @include(if: $get_id)
+                  name
+                }
+                tags 
+                {
+                  name
+                  content_types 
+                  {
+                    id @include(if: $get_id)
+                    app_label
+                    model
+                  }
+                }
+              }
+              connected_circuit_termination 
+              {
+                circuit 
+                {
+                  id @include(if: $get_id)
+                  commit_rate
+                  provider 
+                  {
+                    id @include(if: $get_id)
+                    name
+                  }
+                }
+              }
+              tagged_vlans 
+              {
+                id @include(if: $get_id)
+                name
+                vid
+              }
+              untagged_vlan 
+              {
+                id @include(if: $get_id)
+                name
+                vid
+              }
+              cable 
+              {
+                termination_a_type
+                status {
+                  name
+                }
+                color
+              }
+              tags 
+              {
+                name
+                content_types 
+                {
+                  id @include(if: $get_id)
+                  app_label
+                  model
+                }
+              }
+              lag 
+              {
+                id @include(if: $get_id)
+                name
+                enabled
+              }
+              member_interfaces 
+              {
+                id @include(if: $get_id)
+                name
+              }
+            }
+            location @include(if: $get_location) 
+            {
+              id @include(if: $get_id)
+              name
+            }
+          }
+        }
+        tags @include(if: $get_tags) 
+        {
+          name
+          content_types {
+            id
+            app_label
+            model
+          }
+        }
+        tenant @include(if: $get_tenant) 
+        {
+          id @include(if: $get_id)
+          name
+          tenant_group 
+          {
+            id @include(if: $get_id)
+            name
+          }
+        }
+      }
+    }
+
+  nb.devices: >
+    query Devices(
+      $get_asset_tag: Boolean = false,
+      $get_cf: Boolean = false,
+      $get_custom_field_data: Boolean = false,
+      $get__custom_field_data: Boolean = false,
+      $get_config_context: Boolean = false, 
+      $get_device_type: Boolean = false, 
+      $get_hostname: Boolean = true, 
+      $get_id: Boolean = false, 
+      $get_interfaces: Boolean = false, 
+      $get_location: Boolean = false, 
+      $get_name: Boolean = false, 
+      $get_primary_ip4: Boolean = false, 
+      $get_platform: Boolean = false, 
+      $get_position: Boolean = false,
+      $get_rack: Boolean = false,
+      $get_role: Boolean = false, 
+      $get_serial: Boolean = false,
+      $get_status: Boolean = false,
+      $get_tags: Boolean = false, 
+      $get_tenant: Boolean = false,
+      __query_vars__
+    ) {
+      devices(__devices_params__) {
+        id @include(if: $get_id)
+        name @include(if: $get_name)
+        hostname: name @include(if: $get_hostname)
+        primary_ip4 @include(if: $get_primary_ip4) 
+        {
+          id @include(if: $get_id)
+          ip_version
+          address
+          description
+          mask_length
+          dns_name
+          interfaces {
+            id @include(if: $get_id)
+            name
+          }
+        }
+        role @include(if: $get_role) {
+          id @include(if: $get_id)
+          name
+        }
+        device_type @include(if: $get_device_type) 
+        {
+          id @include(if: $get_id)
+          model
+          manufacturer 
+          {
+            id @include(if: $get_id)
+            name
+          }
+        }
+        platform @include(if: $get_platform) 
+        {
+          id @include(if: $get_id)
+          name
+          manufacturer {
+            id @include(if: $get_id)
+            name
+          }
+        }
+        tags @include(if: $get_tags) 
+        {
+          id @include(if: $get_id)
+          name
+          content_types {
+            id @include(if: $get_id)
+            app_label
+            model
+          }
+        }
+        tenant @include(if: $get_tenant) 
+        {
+            id @include(if: $get_id)
+            name
+            tenant_group {
+              name
+            }
+        }
+        rack @include(if: $get_rack) 
+        {
+          id @include(if: $get_id)
+          name
+        }
+        location @include(if: $get_location) 
+        {
+          id @include(if: $get_id)
+          name
+          description
+        }
+        status @include(if: $get_status) 
+        {
+          id @include(if: $get_id)
+          name
+        }
+        asset_tag @include(if: $get_asset_tag)
+        config_context @include(if: $get_config_context)
+        _custom_field_data @include(if: $get_cf)
+        _custom_field_data @include(if: $get__custom_field_data)
+        custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+        position @include(if: $get_position)
+        serial @include(if: $get_serial)
+        interfaces (__interfaces_params__) @include(if: $get_interfaces)
+        {
+          id @include(if: $get_id)
+          name
+          description
+          enabled
+          mac_address
+          type
+          mode
+          status {
+            id @include(if: $get_id)
+            name
+          }
+          ip_addresses {
+            address
+            status {
+              id @include(if: $get_id)
+              name
+            }
+            role {
+              id @include(if: $get_id)
+            }
+            tags {
+              id @include(if: $get_id)
+              name
+            }
+            parent {
+              id @include(if: $get_id)
+              network
+              prefix
+              prefix_length
+              namespace {
+                id @include(if: $get_id)
+                name
+              }
+            }
+          }
+          connected_circuit_termination {
+            circuit {
+              cid
+              commit_rate
+              provider {
+                name
+              }
+            }
+          }
+          tagged_vlans {
+            id @include(if: $get_id)
+            name
+            vid
+          }
+          untagged_vlan {
+            id @include(if: $get_id)
+            name
+            vid
+          }
+          cable {
+            id @include(if: $get_id)
+            termination_a_type
+            status {
+              name
+            }
+            color
+          }
+          tags {
+            id @include(if: $get_id)
+            name
+            content_types {
+              id
+              app_label
+              model
+            }
+          }
+          lag {
+            id @include(if: $get_id)
+            name
+            enabled
+          }
+          member_interfaces {
+            id @include(if: $get_id)
+            name
+          }
+        }
+      }
+    }
+
+  nb.ipaddresses: >
+    query IPadresses( 
+      $get_address: Boolean = false,
+      $get_config_context: Boolean = false, 
+      $get_cf: Boolean = false,
+      $get_custom_field_data: Boolean = false,
+      $get__custom_field_data: Boolean = false,
+      $get_description: Boolean = false,
+      $get_device_type: Boolean = false, 
+      $get_dns_name: Boolean = false,
+      $get_hostname: Boolean = true, 
+      $get_id: Boolean = false, 
+      $get_interfaces: Boolean = false,
+      $get_interface_assignments: Boolean = false,
+      $get_location: Boolean = false, 
+      $get_name: Boolean = false, 
+      $get_parent: Boolean = false,
+      $get_platform: Boolean = false, 
+      $get_primary_ip4_for: Boolean = false, 
+      $get_role: Boolean = false, 
+      $get_serial: Boolean = false,
+      $get_status:  Boolean = false,
+      $get_tags: Boolean = false,
+      $get_tenant: Boolean = false,
+      $get_type: Boolean = false,
+      __query_vars__
+    ) 
+    {
+      ip_addresses(__ipaddresses_params__) 
+      {
+        id @include(if: $get_id)
+        address @include(if: $get_address)
+        description @include(if: $get_description)
+        dns_name @include(if: $get_dns_name)
+        type @include(if: $get_type)
+        tags @include(if: $get_tags) 
+        {
+          id
+          name
+        }
+        parent @include(if: $get_parent) 
+        {
+          id
+          network
+          prefix
+          prefix_length
+          namespace {
+            id
+            name
+          }
+        }
+        # show ALL interfaces the IP address is assigned on
+        interfaces (__interfaces_params__) @include(if: $get_interfaces) 
+        {
+          id @include(if: $get_id)
+          name
+          device {
+            id @include(if: $get_id)
+            name
+          }
+          description
+          enabled
+          mac_address
+          type
+          mode
+          ip_addresses {
+            address
+            role {
+              id @include(if: $get_id)
+              name
+            }
+            tags {
+              name
+              content_types {
+                id @include(if: $get_id)
+                app_label
+                model
+              }
+            }
+          }
+        }
+
+        # interface assignments
+        interface_assignments (__interface_assignments_params__) @include(if: $get_interface_assignments) 
+        {
+          id @include(if: $get_id)
+          is_standby
+          is_default
+          is_destination
+          interface {
+            id @include(if: $get_id)
+            name
+            description
+            type
+            status {
+              id @include(if: $get_id)
+              name
+            }
+            device {
+              id @include(if: $get_id)
+              name
+            }
+            child_interfaces {
+              id @include(if: $get_id)
+              name
+            }
+          }
+        }
+
+        # now ALL data for the primary IP device
+        primary_ip4_for(__primaryip4for_params__) @include(if: $get_primary_ip4_for) {
+          id @include(if: $get_id)
+          name @include(if: $get_name)
+          hostname: name @include(if: $get_hostname)
+          role @include(if: $get_role) {
+            id @include(if: $get_id)
+            name
+          }
+          device_type @include(if: $get_device_type) {
+            id @include(if: $get_id)
+            model
+          }
+          platform @include(if: $get_platform) {
+            id @include(if: $get_id)
+            name
+            manufacturer {
+              id @include(if: $get_id)
+              name
+            }
+          }
+          tags @include(if: $get_tags) {
+            id @include(if: $get_id)
+            name
+            content_types {
+              id @include(if: $get_id)
+              app_label
+              model
+            }
+          }
+          tenant @include(if: $get_tenant) {
+            id @include(if: $get_id)
+            name
+            tenant_group {
+              name
+            }
+          }
+          serial @include(if: $get_serial)
+          status @include(if: $get_status) {
+            id @include(if: $get_id)
+            name
+          }
+          config_context @include(if: $get_config_context)
+          _custom_field_data @include(if: $get_cf)
+          _custom_field_data @include(if: $get__custom_field_data)
+          custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+          interfaces (__interfaces_params__) @include(if: $get_interfaces) {
+            id @include(if: $get_id)
+            name
+            device {
+              name
+            }
+            description
+            enabled
+            mac_address
+            type
+            mode
+            ip_addresses {
+              address
+              role {
+                id @include(if: $get_id)
+                name
+              }
+              tags {
+                id @include(if: $get_id)
+                name
+                content_types {
+                  id
+                  app_label
+                  model
+                }
+              }
+            }
+            connected_circuit_termination {
+              circuit {
+                cid
+                commit_rate
+                provider {
+                  name
+                }
+              }
+            }
+            tagged_vlans {
+              name
+              vid
+            }
+            untagged_vlan {
+              name
+              vid
+            }
+            cable {
+              termination_a_type
+              status {
+                name
+              }
+              color
+            }
+            tags {
+              name
+              content_types {
+                id
+                app_label
+                model
+              }
+            }
+            lag {
+              name
+              enabled
+            }
+            member_interfaces {
+              name
+            }
+          }
+          location @include(if: $get_location) {
+            name
+          }
+        }
+      }
+    }
+
+  nb.vlans: >
+    query Vlans(
+        $get_id: Boolean = false,
+        $get_vid: Boolean = false, 
+        $get_name: Boolean = false, 
+        $get_status: Boolean = false,
+        $get_role: Boolean = false,
+        $get_description: Boolean = false,
+        $get_location: Boolean = false,
+        $get_vlan_group: Boolean = false,
+        $get_tenant: Boolean = false,
+        $get_tags: Boolean = false,
+        __query_vars__
+      ) {
+      vlans(__vlans_params__) {
+        id @include(if: $get_id)
+        vid @include(if: $get_vid)
+        name @include(if: $get_name)
+        status @include(if: $get_status) {
+          name
+        }
+        role @include(if: $get_role) {name}
+        description @include(if: $get_description)
+        location @include(if: $get_location) {
+          name
+          id @include(if: $get_id)
+          location_type {
+            id @include(if: $get_id)
+            name
+          }
+        }
+        vlan_group @include(if: $get_vlan_group) {name}
+        tenant @include(if: $get_tenant) {
+            name
+            tenant_group {
+              name
+            }
+        }
+        tags @include(if: $get_tags) {
+          name
+          content_types {
+            id
+            app_label
+            model
+          }
+        }
+      }
+    }
+
+  nb.general: >
+    query General(
+      $get_locations: Boolean = false,
+      $get_tags: Boolean = false,
+      __query_vars__
+    ) 
+    {
+      locations(__general_params__) @include(if: $get_locations) {
+        id
+        name
+        facility
+        description
+        physical_address
+        shipping_address
+        contact_name
+        contact_phone
+        contact_email
+        comments
+        parent {
+          id
+          name
+        }
+        children {
+          id
+          name
+        }
+        status {
+          id
+          name
+        }
+        asn
+        time_zone
+        location_type {
+          id
+          name
+        }
+        tenant {
+          id
+          name
+        }
+        tags {
+          id
+          name
+        }
+      }
+      tags(__general_params__) @include(if: $get_tags) {
+        id
+        name
+        content_types {
+          id
+          app_label
+          model
+        }
+      }
+    }
+
+  nb.vms: >
+    query Vms
+    (
+      $get_cf: Boolean = false,
+      $get_cluster: Boolean = false,
+      $get_custom_field_data: Boolean = false,
+      $get__custom_field_data: Boolean = false,
+      $get_disk: Boolean = false,
+      $get_id: Boolean = false,
+      $get_interfaces: Boolean = false, 
+      $get_memory: Boolean = false,
+      $get_name: Boolean = false, 
+      $get_primary_ip4: Boolean = false, 
+      $get_platform: Boolean = false,
+      $get_role: Boolean = false,
+      $get_services: Boolean = false,
+      $get_status: Boolean = false,
+      $get_tags: Boolean = false,
+      $get_vcpus: Boolean = false,
+      $get_vrf_assignments: Boolean = false,
+      __query_vars__
+    )
+    {
+      virtual_machines (__vms_params__)
+      {
+        id @include(if: $get_id)
+        name @include(if: $get_name)
+        status @include(if: $get_status)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        role @include(if: $get_role)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        platform @include(if: $get_platform)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        tags @include(if: $get_tags)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        vcpus @include(if: $get_vcpus)
+        memory @include(if: $get_memory)
+        disk @include(if: $get_disk)
+        services @include(if: $get_services)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        cluster @include(if: $get_cluster)
+        {
+          id @include(if: $get_id)
+          name
+          cluster_group 
+          {
+            id
+            name
+          }
+        }
+        vrf_assignments @include(if: $get_vrf_assignments)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        _custom_field_data @include(if: $get_cf)
+        _custom_field_data @include(if: $get__custom_field_data)
+        custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+        primary_ip4 @include(if: $get_primary_ip4)
+        {
+          id @include(if: $get_id)
+          ip_version
+          address
+          description
+          mask_length
+          dns_name
+          interfaces @include(if: $get_interfaces)
+          {
+            id @include(if: $get_id)
+            name
+          }
+        }
+        interfaces @include(if: $get_interfaces)
+        {
+          id @include(if: $get_id)
+          name
+          description
+          enabled
+          mac_address
+          mode
+          status 
+          {
+            id @include(if: $get_id)
+            name
+          }
+          ip_addresses 
+          {
+            address
+            status 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            role 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            tags 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            parent 
+            {
+              id @include(if: $get_id)
+              network
+              prefix
+              prefix_length
+              namespace 
+              {
+                id @include(if: $get_id)
+                name
+              }
+            }
+          }
+          tagged_vlans 
+          {
+            id @include(if: $get_id)
+            name
+            vid
+          }
+          untagged_vlan 
+          {
+            id @include(if: $get_id)
+            name
+            vid
+          }
+          tags 
+          {
+            id @include(if: $get_id)
+            name
+            content_types 
+            {
+              id @include(if: $get_id)
+              app_label
+              model
+            }
+          }
+        }
+      }
+    }
