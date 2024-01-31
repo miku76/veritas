@@ -328,14 +328,14 @@ def calculate_md5(row:list):
         the MD5 hash
     """
     data = ""
-    for d in row:
-        if isinstance(d, list):
-            my_list = ''.join(d)
+    for cell in row:
+        if isinstance(cell, list):
+            my_list = ''.join(cell)
             data += my_list
-        elif d is None or d == 'null':
+        elif cell is None or cell == 'null':
             pass
         else:
-            data += d
+            data += cell
     return hashlib.md5(data.encode('utf-8')).hexdigest()
 
 def get_date(date:str) -> str:
