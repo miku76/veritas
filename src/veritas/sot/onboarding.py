@@ -392,7 +392,6 @@ class Onboarding:
         virtual_interfaces = []
         physical_interfaces = []
         for interface in interfaces:
-            print(interface)
             interface_name = interface['name']
             if interface and 'port-channel' in interface_name.lower():
                 virtual_interfaces.append(interface)
