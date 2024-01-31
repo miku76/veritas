@@ -234,7 +234,8 @@ class Sot:
             logger.debug(f'nautobot api object created; api_version={api_version} ssl_verify={ssl_verify}')
             self._nautobot = api(self._sot_config['nautobot_url'], 
                                  token=self._sot_config['nautobot_token'], 
-                                 api_version=api_version)
+                                 api_version=api_version,
+                                 verify=ssl_verify)
             self._nautobot.http_session.verify = ssl_verify
 
         return self._nautobot
