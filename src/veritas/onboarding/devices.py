@@ -49,7 +49,6 @@ def get_device_properties(sot, device_properties, device_facts, ciscoconf, onboa
                                                   device_facts,
                                                   ciscoconf,
                                                   onboarding_config)
-        print(additional_values)
         # we have to merge all tags. So just save tags now and add new ones later
         saved_tags = device_properties.get('tags',[])
         for key,value in dict(additional_values).items():
@@ -92,11 +91,10 @@ def get_device_properties(sot, device_properties, device_facts, ciscoconf, onboa
 
         # merge the device properties and the additional values
         # this merge is destructive!!!
-        result = always_merger.merge(device_properties, additional_values)
+        result = always_merger.merge(device_properties, dict(additional_values))
         # restore tags!
         if len(saved_tags) > 0:
             result['tags'] = saved_tags
-        device_properties = result
         device_properties.update({'custom_fields': cf_fields})
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
