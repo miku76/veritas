@@ -118,3 +118,129 @@ class Ipam(object):
                 objs.append(self._nautobot.ipam.vlans.get(id=id))
             return objs
         return response
+
+    def get_assignment(self, interface, address, device=None, namespace='Global'):
+
+        if isinstance(interface, str):
+            # we need the device to get the interface
+            if isinstance(device, str):
+                # get nautobot object of device
+                nb_device = self._nautobot.dcim.devices.get(name=device)
+            else:
+                nb_device = device
+
+            if not nb_device:
+                logger.error(f'failed to get device {device}')
+                return False
+            # get nautobot object of interface
+            nb_interface = self._nautobot.dcim.interfaces.get(
+                device_id=nb_device.id, 
+                name=interface)
+        else:
+            nb_interface = interface
+
+        if isinstance(address, str):
+            # get nautobot object of device
+            nb_addr = self._nautobot.ipam.ip_addresses.get(
+                address=address,
+                namespace=namespace)
+        else:
+            nb_addr = address
+
+        try:
+            return self._nautobot.ipam.ip_address_to_interface.get(
+                    interface=nb_interface.id, 
+                    ip_address=nb_addr.id)
+        except Exception as exc:
+            logger.error(f'failed to get assignment; got exception {exc}')
+            return None
+
+    def assign_ipaddress_to_interface(self, interface, address, device=None, namespace='Global') -> bool:
+        """private method to assign IPv4 address to interface set primary IPv4
+
+        Parameters
+        ----------
+        device : str or nautobot.dcim.devices
+            the device of the interfaces
+        interface : str or nautobot.dcim.interfaces
+            interface to assign IP to
+        address : str or nautobot.ipam.ip_addresses
+            IP address to assign
+
+        Returns
+        -------
+        assigned : bool
+            True if successfull
+
+        """
+        if isinstance(interface, str):
+            # we need the device to get the interface
+            if isinstance(device, str):
+                # get nautobot object of device
+                nb_device = self._nautobot.dcim.devices.get(name=device)
+            else:
+                nb_device = device
+
+            if not nb_device:
+                logger.error(f'failed to get device {device}')
+                return False
+            # get nautobot object of interface
+            nb_interface = self._nautobot.dcim.interfaces.get(
+                device_id=nb_device.id, 
+                name=interface)
+        else:
+            nb_interface = interface
+
+        if isinstance(address, str):
+            # get nautobot object of device
+            nb_addr = self._nautobot.ipam.ip_addresses.get(
+                address=address,
+                namespace=namespace)
+        else:
+            nb_addr = address
+
+        if not nb_addr:
+            logger.error(f'failed to get IP address {address}')
+
+        logger.debug(f'assigning IP {address} to {nb_device}/{nb_interface.display}')
+        try:
+            properties = {'interface': nb_interface.id,
+                         'ip_address': nb_addr.id}
+            return self._nautobot.ipam.ip_address_to_interface.create(properties)
+        except Exception as exc:
+            if 'The fields interface, ip_address must make a unique set.' in str(exc):
+                logger.debug('this IP address is already assigned')
+                return True
+            else:
+                logger.error(f'failed to assign ip to interface; got exception {exc}')
+                return False
+        
+    def set_primary(self, device, address, namespace='Global'):
+        """set primary IP address of device
+
+        Parameters
+        ----------
+        device : str or nautobot.dcim.devices
+            the device of the interfaces
+        ip_address : str or nautobot.ipam.-addresses
+            the IP address to assign
+        """
+        if isinstance(device, str):
+            # get nautobot object of device
+            nb_device = self._nautobot.dcim.devices.get(name=device)
+        else:
+            nb_device = device
+
+        if isinstance(address, str):
+            # get nautobot object of device
+            nb_addr = self._nautobot.ipam.ip_addresses.get(
+                address=address,
+                namespace=namespace)
+        else:
+            nb_addr = address
+
+        try:
+            return nb_device.update({'primary_ip4': nb_addr.id})
+        except Exception:
+            logger.error(f'could not set primary IPv4 on {nb_device}')
+            return False

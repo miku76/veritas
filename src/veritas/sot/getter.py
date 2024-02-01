@@ -64,13 +64,13 @@ class Getter(object):
         else:
             return self._nautobot.ipam.ip_addresses.get(address=address)
 
-    def interface(self, *unnamed, **named):
+    def interface(self, device, interface_name, device_id=None):
         """returns interface of device"""
-        properties = tools.convert_arguments_to_properties(unnamed, named)
+        # properties = tools.convert_arguments_to_properties(unnamed, named)
 
-        device = properties.get('device')
-        device_id = properties.get('device_id')
-        interface_name = properties.get('name')
+        # device = properties.get('device')
+        # device_id = properties.get('device_id')
+        # interface_name = properties.get('name')
 
         if device_id:
             logger.debug(f'getting Interface {interface_name} of {device_id}')

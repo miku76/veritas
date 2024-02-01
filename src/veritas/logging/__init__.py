@@ -61,7 +61,14 @@ def create_logger_environment(config, cfg_loglevel=None, cfg_loghandler=None, ap
         zeromq = None
 
     # configure formatter
-    if loglevel == "DEBUG":
+    if loglevel == "TRACE":
+        logger_format = (
+                "<green>{time:HH:mm:ss.SSS}</green> | "
+                "<level>{level: <8}</level> | "
+                "<cyan>{name: <18.18}</cyan> | <cyan>{function: <15.15}</cyan> | <cyan>{line: >3}</cyan> | "
+                "{extra[extra]: <12} | <level>{message}</level>"
+        )
+    elif loglevel == "DEBUG":
         logger_format = (
                 "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
                 "<level>{level: <8}</level> | "

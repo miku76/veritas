@@ -164,7 +164,7 @@ def get_primary_interface_by_address(primary_address, ciscoconf):
             logger.info("primary interface has no description configured; using 'primary interface'")
             primary_interface['description'] = "primary interface"
     else:
-        logger.debug(f'found no interface, setting default values')
+        logger.debug('found no interface, setting default values')
         primary_interface['name'] = "primaryInterface"
         primary_interface['description'] = "primary interface"
         primary_interface['cidr'] = f'{primary_address}/32'

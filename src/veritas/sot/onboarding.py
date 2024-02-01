@@ -338,10 +338,14 @@ class Onboarding:
 
         """
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
-        logger.debug(f'properties: {properties}')
+        #logger.debug(f'properties: {properties}')
 
         # add device to nautobot
         device = self._add_device_to_nautobot(properties)
+
+        if not device:
+            logger.error('failed to add device to nautbot')
+            return False
 
         # first of all VLANs are added to the SOT
         if device and len(self._vlans) > 0:
@@ -392,7 +396,6 @@ class Onboarding:
         virtual_interfaces = []
         physical_interfaces = []
         for interface in interfaces:
-            print(interface)
             interface_name = interface['name']
             if interface and 'port-channel' in interface_name.lower():
                 virtual_interfaces.append(interface)
@@ -427,7 +430,7 @@ class Onboarding:
                         for ip_address in added_addresses:
                             if self._assign_ip:
                                 if nb_interface:
-                                    assign = self._assign_ipaddress_to_interface(device, nb_interface, ip_address)
+                                    assign = self._assign_ip_and_set_primary(device, nb_interface, ip_address)
                                     logger.debug(f'assigned IPv4 {ip_address} on device {device} / nb_interface')
                                 else:
                                     logger.error(f'could not get interface {device.name}/{interface.get("name")}')
@@ -496,7 +499,7 @@ class Onboarding:
                     for ip_address in added_addresses:
                         if self._assign_ip:
                             if nb_interface:
-                                self._assign_ipaddress_to_interface(device, nb_interface, ip_address)
+                                self._assign_ip_and_set_primary(device, nb_interface, ip_address)
                                 logger.debug(f'assigned IPv4 {ip_address.display} on device {device} / nb_interface')
                             else:
                                 logger.error(f'could not get interface {device.name}/{interface.get("name")}')
@@ -569,6 +572,7 @@ class Onboarding:
                 if self._use_device_if_already_exists:
                     return self._nautobot.dcim.devices.get(name=device_name)
             else:
+                logger.error(f'properties: {device_properties}')
                 logger.error(exc)
         return None 
 
@@ -727,7 +731,7 @@ class Onboarding:
                     logger.error(exc)
         return added_addresses 
 
-    def _assign_ipaddress_to_interface(self, device, interface, ip_address) -> bool:
+    def _assign_ip_and_set_primary(self, device, interface, ip_address) -> bool:
         """private method to assign IPv4 address to interface set primary IPv4
 
         Parameters
@@ -794,6 +798,6 @@ class Onboarding:
                 try:
                     assignment.delete()
                 except Exception as exc:
-                    logger.error(exc)
+                    logger.error(f'failed to delete assignment; got exception {exc}')
                     response = False
         return response

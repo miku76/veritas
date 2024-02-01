@@ -25,12 +25,12 @@ def additional(device_defaults, device_facts, ciscoconf, onboarding_config):
     # init response
     response = benedict(keyattr_dynamic=True)
 
-    logger.debug(f'reading config from {directory} for creating additional values')
+    logger.debug(f'reading config from {directory} for adding additional values')
     # we read all *.yaml files in our additional_values data config dir
     for filename in glob.glob(os.path.join(directory, "*.yaml")):
-        logger.debug(f'reading additional config in {filename}')
+        logger.debug(f'reading additional config {filename.rsplit("/")[-1]}')
 
-        config = read_file(filename, device_defaults)
+        config = read_file(filename, device_defaults.get('platform'))
         if config is None:
             continue
 
@@ -38,6 +38,8 @@ def additional(device_defaults, device_facts, ciscoconf, onboarding_config):
         files.append(os.path.basename(filename))
 
         for item_config in config.get('additional'):
+            name = item_config.get('name','unknown')
+            logger.debug(f'got additional config; name={name}')
             if 'file' in item_config:
                 # it is either a csv or an xlsx file
                 get_additional_values_from_file(
@@ -73,7 +75,12 @@ def add_values_from_csv(response, item_config, device_facts, device_defaults, on
     directory = os.path.join(basedir, './onboarding/additional_values/')
     
     filename = "%s/%s" % (directory, item_config.get('file'))
-    logger.debug(f'reading additional values from {filename}')
+    # check if file exists
+    if not os.path.isfile(filename):
+        logger.error(f'file {filename} does not exists. Please correct your config.')
+        return
+
+    logger.debug(f'reading additional CSV values from {filename}')
 
     # set default values
     delimiter = item_config.get('delimiter',',')
@@ -134,8 +141,13 @@ def add_values_from_excel(response, item_config, device_facts, device_defaults, 
     directory = os.path.join(basedir, './onboarding/additional_values/')
 
     filename = "%s/%s" % (directory, item_config.get('file'))
+    # check if file exists
+    if not os.path.isfile(filename):
+        logger.error(f'file {filename} does not exists. Please correct your config.')
+        return
+
     matching_key = item_config.get('matches_on')
-    logger.debug(f'reading additional values from {filename} matching_key: {matching_key}')
+    logger.debug(f'reading additional XLSX values from {filename} matching_key: {matching_key}')
 
     if filename in _global_cache:
         workbook = _global_cache.get(filename)
@@ -186,6 +198,8 @@ def add_values_from_excel(response, item_config, device_facts, device_defaults, 
                                 response[key] = value
                         elif value:
                             response[key] = value
+
+    logger.debug('processed XLSX file successfully')
 
 def get_additional_values_from_config(response, device_facts, device_defaults, item_config, ciscoconf):
     """Checks whether the device meets the configured criteria.
@@ -247,7 +261,9 @@ def get_matches(device_facts, device_defaults, matches, ciscoconf):
 
     get_matches returns the value that matches
     """
+    logger.debug('looping through all matches in config file')
     for name, value in matches.items():
+        logger.debug(f'analyzing name={name}')
         if '__' in name:
             splits = name.split('__')
             source = key = lookup = ""
@@ -305,11 +321,11 @@ def get_matches(device_facts, device_defaults, matches, ciscoconf):
                         return m
     return False
 
-def read_file(filename, device_defaults):
+def read_file(filename, device_platform):
     """read yaml file and check if file must be processed (is active and platform matches)"""
     with open(filename) as f:
         config = {}
-        logger.debug("opening file %s to read additional field config" % filename)
+        logger.debug(f'open file {filename.rsplit("/")[-1]}')
         try:
             config = yaml.safe_load(f.read())
             if config is None:
@@ -322,11 +338,11 @@ def read_file(filename, device_defaults):
         platform = config.get('platform')
 
         if not config.get('active'):
-            logger.debug(f'file {filename} is not active')
+            logger.debug(f'file {filename.rsplit("/")[-1]} is not active')
             return None
         if platform is not None:
-            if platform != 'all' and platform != device_defaults.get("platform",''):
+            if platform != 'all' and platform != device_platform:
                 logger.debug("skipping custom field %s wrong platform %s" % (name, platform))
                 return None
-
+        logger.debug('config read and parsed successfully')
         return config

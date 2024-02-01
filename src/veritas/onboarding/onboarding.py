@@ -7,6 +7,7 @@ import csv
 from os import path
 from loguru import logger
 from benedict import benedict
+from deepmerge import always_merger
 
 # veritas
 import veritas.repo
@@ -87,7 +88,7 @@ class Onboarding():
         # check if file exists
         if not os.path.exists(inventory):
             logger.error('inventory does not exists or cannot be read')
-            return {}
+            return benedict(keyattr_dynamic=True)
 
         logger.debug(f'reading inventory {inventory}')
         if 'csv' in inventory:
@@ -98,7 +99,7 @@ class Onboarding():
             return self.read_xlsx_inventory(inventory)
         else:
             logger.ciritical(f'unknown file format {inventory}')
-            return {}
+            return benedict(keyattr_dynamic=True)
 
     def read_mapping(self):
         """read mapping from miniapps config"""
@@ -110,7 +111,7 @@ class Onboarding():
         )
         if filename:
             # read mapping from file
-            logger.debug(f'reading mapping_config from {filename}')
+            logger.debug(f'reading mapping config {filename.rsplit("/")[-1]}')
             with open(filename) as f:
                 mapping_config = yaml.safe_load(f.read())
             column_mapping = mapping_config.get('mappings',{}).get('columns',{})
@@ -128,7 +129,7 @@ class Onboarding():
 
         table = tools.read_excel_file(inventory)
         for row in table:
-            d = {}
+            device = benedict(keyattr_dynamic=True)
             for k,v in row.items():
                 key = column_mapping.get(k) if k in column_mapping else k
                 if key in value_mapping:
@@ -143,8 +144,8 @@ class Onboarding():
                     value = True
                 if isinstance(value, str) and value.lower() == 'false':
                     value = False
-                d[key] = value
-            devicelist.append(d)
+                device[key] = value
+            devicelist.append(device)
 
         return devicelist
 
@@ -175,7 +176,7 @@ class Onboarding():
         with open(inventory, newline=newline) as csvfile:
             csvreader = csv.DictReader(csvfile, delimiter=delimiter, quoting=quoting, quotechar=quotechar)
             for row in csvreader:
-                d = {}
+                device = benedict(keyattr_dynamic=True)
                 for k,v in row.items():
                     key = column_mapping.get(k) if k in column_mapping else k
                     if key in value_mapping:
@@ -190,8 +191,8 @@ class Onboarding():
                         value = True
                     if isinstance(value, str) and value.lower() == 'false':
                         value = False
-                    d[key] = value
-                devicelist.append(d)
+                    device[key] = value
+                devicelist.append(device)
 
         return devicelist
 
@@ -259,21 +260,60 @@ class Onboarding():
 
         return defaults
 
-    def get_device_defaults(self, host_or_ip, device_dict):
-        """get defaults from our onboarding config and the inventory"""
+    def get_device_defaults(self, host_or_ip, device_dict) -> dict:
+        """get defaults from our onboarding config and the inventory
+
+        Parameters
+        ----------
+        host_or_ip : str
+            hostname or ip of device
+        device_dict : dict
+            default values from inventory
+
+        Returns
+        -------
+        dict
+            The merged device defaults of the device
+        """
         if not self._all_defaults:
             self._all_defaults = self.get_default_values_from_repo()
 
         # get default values from SOT / the lowest priority is the prefix default
+        logger.debug('getting get_device_defaults_from_prefix')
         device_defaults = self.get_device_defaults_from_prefix(self._all_defaults, host_or_ip)
+        for key, value in device_defaults.items():
+            logger.bind(extra='dfl').trace(f'key={key} value={value}')
+
+        saved_tags = device_defaults.get('tags')
 
         # the second priority is the inventory
-        for key, value in device_dict.items():
+        for key, value in dict(device_dict).items():
             # do not overwrite values with None
             if value is not None:
-                device_defaults[key] = value
-        
-        return device_defaults
+                if key in device_defaults:
+                    logger.bind(extra='inv (=)').trace(f'key={key} value={value}')
+                else:
+                    logger.bind(extra='inv (+)').trace(f'key={key} value={value}')
+            else:
+                del device_dict[key]
+
+        # we have to do a deep merge. We do not want to overwrite values
+        # always_merger: always try to merge. in the case of mismatches, the value 
+        # from the second object overrides the first one.
+        # this merge is descructive!!!
+        result = always_merger.merge(device_defaults, device_dict)
+
+        # tags is a list. We have to merge these two lists
+        if saved_tags and 'tags' in device_dict:
+            if isinstance (saved_tags, str):
+                saved_tags = [ saved_tags ]
+            if isinstance (device_dict['tags'], str):
+                device_dict['tags'] = [ device_dict['tags'] ]
+            result['tags'] = saved_tags + device_dict['tags']
+
+        # save default; we need the default values later again
+        self._device_defaults = result
+        return self._device_defaults
 
     def read_config_and_facts_from_file(self, hostname):
         device_config = ""
@@ -473,6 +513,7 @@ class Onboarding():
         if isinstance(tags, str):
             logger.debug('adding tag to device_properties')
             device_properties['tags'] = tags.split(',')
+            logger.bind(extra='onb (=)').trace(f'key=tags value={tags}')
 
         # save properties for later use
         self._device_properties = device_properties
