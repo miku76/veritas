@@ -49,6 +49,8 @@ def get_device_properties(sot, device_properties, device_facts, ciscoconf, onboa
                                                   device_facts,
                                                   ciscoconf,
                                                   onboarding_config)
+        print(additional_values)
+        # we have to merge all tags. So just save tags now and add new ones later
         saved_tags = device_properties.get('tags',[])
         for key,value in dict(additional_values).items():
             if key.startswith('cf_'):
@@ -57,10 +59,33 @@ def get_device_properties(sot, device_properties, device_facts, ciscoconf, onboa
                 del additional_values[key]
                 logger.bind(extra='add (=)').trace(f'key={key} value={value}')
             elif key == 'tags':
+                # do not overwrite tags. We build a list of tags
                 if isinstance(value, str):
                     saved_tags.append(value)
                 else:
                     saved_tags = saved_tags + value
+            elif key == 'primary_interface':
+                # check if we have to change the address
+                primary_address = additional_values.get('primary_interface',{}).get('address')
+                if primary_address:
+                    # the primary IP has changed. Get the primary interface
+                    primary_interface_name = ciscoconf.get_interface_name_by_address(primary_address)
+                    new_primary_interface = ciscoconf.get_interface(primary_interface_name)
+                    logger.info(f'change primary_ip to {primary_address} and interface to {primary_interface_name}')
+                    logger.bind(extra='add (=)').\
+                        trace(f'key=primary_interface.address value={primary_address}')
+                    # if we found the new interface we use this value
+                    # otherwise we use default values
+                    if new_primary_interface:
+                        additional_values['primary_interface.name'] = primary_interface_name
+                        additional_values['primary_interface.description'] = new_primary_interface.get('description','')
+                        additional_values['primary_interface.mask'] = new_primary_interface.get('mask','')
+                        logger.bind(extra='add (=)').\
+                            trace(f'key=primary_interface.name value={primary_interface_name}')
+                        logger.bind(extra='add (=)').\
+                            trace(f'key=primary_interface.description value={new_primary_interface.get("description","")}')
+                        logger.bind(extra='add (=)').\
+                            trace(f'key=primary_interface.mask value={new_primary_interface.get("mask","")}')
             else:
                 if key in device_properties:
                     logger.bind(extra='add (=)').trace(f'key={key} value={value}')
@@ -73,29 +98,6 @@ def get_device_properties(sot, device_properties, device_facts, ciscoconf, onboa
             result['tags'] = saved_tags
         device_properties = result
         device_properties.update({'custom_fields': cf_fields})
-
-        # for key,value in additional_values.items():
-        #     logger.debug(f'updating device_properties {key}={value} (additional value)')
-        #     if key == 'primary_ip' and len(value) > 0:
-        #         primary_address = value
-        #         primary_interface_name = ciscoconf.get_interface_name_by_address(primary_address)
-        #         new_primary_interface = ciscoconf.get_interface(primary_interface_name)
-        #         # we need the name of the interface
-        #         if 'name' not in new_primary_interface:
-        #             new_primary_interface['name'] = primary_interface_name
-        #         if new_primary_interface:
-        #             logger.info(f'change primary_ip to {primary_address} and interface {primary_interface_name}')
-        #             device_properties['primary_interface'] = new_primary_interface
-        #             logger.bind(extra='add (=)').trace(f'key=primary_interface value={new_primary_interface}')
-        #     elif key.startswith('cf_'):
-        #         k = key.split('cf_')[1]
-        #         cf_fields[k] = value
-        #     else:
-        #         device_properties[key] = value
-        #         logger.bind(extra='add (=)').trace(f'key={key} value={value}')
-        # add custom fields to device properties
-        # device_properties.update({'custom_fields': cf_fields})
-        # logger.bind(extra='add (=)').trace(f'key=custom_fields value={cf_fields}')
     except Exception as exc:
         exc_type, exc_obj, exc_tb = sys.exc_info()
         logger.error("device properties failed in line %s; got: %s (%s, %s, %s)" % (exc_tb.tb_lineno,
