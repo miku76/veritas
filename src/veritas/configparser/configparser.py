@@ -20,7 +20,6 @@ class Configparser(object):
         # nxos and ios differs using Port-channel/Port-Channel/port-channel
         self._naming = {}
 
-        logger.debug('reading configparser config')
         package = f'{__name__.split(".")[0]}.configparser.data'
         with importlib.resources.open_text(package, 'config.yaml') as f:
             self._my_config = yaml.safe_load(f.read())
@@ -40,13 +39,17 @@ class Configparser(object):
 
         # get template
         ttp_template = self._get_template(properties)
-    
+        if not ttp_template:
+            logger.debug('failed to get template; pasring aborted')
+            return False
+
         if self._device_config:
             device_config = self._device_config
         if 'config' in properties:
             device_config = properties.get('config')
 
         # create parser object and parse data using template:
+        logger.debug('parsing device config')
         try:
             self._parser = ttp(data=device_config, 
                                template=ttp_template,
@@ -59,7 +62,7 @@ class Configparser(object):
             if self._empty_config:
                 logger.debug('this is an empty config; return True')
                 return True
-            logger.error(f'could not parse config {exc}')
+            logger.error(f'failed to parse config; got exception {exc}')
             return None
 
     def get(self, *unnamed, **named):
@@ -291,8 +294,9 @@ class Configparser(object):
 
         package = f'{__name__.split(".")[0]}.configparser.data.templates'
         file = importlib.resources.files(package).joinpath(filename)
+        short_file = str(file).rsplit("/")[-1]
         try:
-            logger.debug(f'reading template {file}')
+            logger.debug(f'reading template {short_file}')
             with open(file) as f:
                 ttp_template = f.read()
         except Exception as exc:
