@@ -243,7 +243,7 @@ class Onboarding():
         if all_defaults is None:
             return benedict(keyattr_dynamic=True)
 
-        logger.debug(f'geting device defaults of {ip}')
+        logger.debug(f'geting (prefix based) device defaults of {ip}')
         """
         the prefix path is used to get the default values of a device
         The path consists of the individual subpaths eg when the device 
@@ -252,6 +252,7 @@ class Onboarding():
         0.0.0.0 should always exist and set the default values.
         """
         prefix_path = tools.get_prefix_path(all_defaults, ip)
+        logger.debug(f'the prefix path is {prefix_path}')
         defaults = benedict(keyattr_dynamic=True)
         for prefix in prefix_path:
             for key, value in all_defaults[prefix].items():
@@ -279,7 +280,6 @@ class Onboarding():
             self._all_defaults = self.get_default_values_from_repo()
 
         # get default values from SOT / the lowest priority is the prefix default
-        logger.debug('getting get_device_defaults_from_prefix')
         device_defaults = self.get_device_defaults_from_prefix(self._all_defaults, host_or_ip)
         for key, value in device_defaults.items():
             logger.bind(extra='dfl').trace(f'key={key} value={value}')
@@ -405,6 +405,9 @@ class Onboarding():
         try:
             defaults_yaml = yaml.safe_load(defaults_str)
             if defaults_yaml is not None and 'defaults' in defaults_yaml:
+                # save defaults as all_defaults. We need it to get the default value for
+                # each device
+                self._all_defaults = defaults_yaml['defaults']
                 return defaults_yaml['defaults']
         except Exception as exc:
             logger.critical(f'failed to read default values; got exception: {exc}', exc_info=True)
