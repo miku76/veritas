@@ -411,10 +411,10 @@ class Onboarding:
             # the interfaces were added; now add the IP addresses of ALL interfaces
             for interface in interfaces:
                 ip_addresses = interface.get('ip_addresses',[])
+                logger.debug(f'found {len(ip_addresses)} IP(s) on device {device}/'
+                             f'{interface.get("name")}')
                 # an interface can have more than one IP, so it is a list of IPs!!!
                 if len(ip_addresses) > 0:
-                    logger.debug(f'found {len(ip_addresses)} IP(s) on device {device} '
-                                 f'{interface.get("name")}')
                     # add description to each IP address
                     for addr in ip_addresses:
                         addr['description'] = f'{device} {interface.get("name")}'

@@ -89,7 +89,7 @@ class Getter(object):
         device_id = properties.get('device_id')
 
         if device_id:
-            logger.debug(f'getting ALL Interface of {device_id}')
+            logger.debug(f'getting ALL Interface of ID {device_id}')
             return self._nautobot.dcim.interfaces.filter(device_id=device_id)
         else:
             logger.debug(f'getting ALL Interface of {device}')
