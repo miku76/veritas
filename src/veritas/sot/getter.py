@@ -98,17 +98,19 @@ class Getter(object):
     def vlans(self,  *unnamed, **named):
         return self._sot.ipam.get_vlans(*unnamed, **named)
 
-    def hldm(self, *unnamed, **named):
-        properties = tools.convert_arguments_to_properties(unnamed, named)
-        
-        # select ALL possible values
-        select = ['asset_tag', 'custom_field_data', 'config_context', 'device_type',
-                  'id' ,'interfaces' , 'location' , 'name', 'primary_ip4',
+    def hldm(self, device, get_id=True):
+                # select ALL possible values
+        select = ['asset_tag', 'custom_field_data', 'config_context', 'device_bays',
+                  'device_type','interfaces' , 'local_config_context_data', 
+                  'location' , 'name', 'parent_bay', 'primary_ip4',
                   'platform', 'position', 'rack' , 'role', 'serial', 'status',
                   'tags', 'tenant']
 
+        if get_id:
+            select.append('id')
+
         using = 'nb.devices'
-        where = {'name': properties.get('device')}
+        where = {'name': device}
         return self.query(select=select, using=using, where=where)
     
     def changes(self, *unnamed, **named):
