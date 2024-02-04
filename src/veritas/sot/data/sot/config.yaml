@@ -251,13 +251,16 @@ queries:
       $get_cf: Boolean = false,
       $get_custom_field_data: Boolean = false,
       $get__custom_field_data: Boolean = false,
-      $get_config_context: Boolean = false, 
+      $get_config_context: Boolean = false,
+      $get_device_bays: Boolean = false,
       $get_device_type: Boolean = false, 
       $get_hostname: Boolean = true, 
       $get_id: Boolean = false, 
-      $get_interfaces: Boolean = false, 
+      $get_interfaces: Boolean = false,
+      $get_local_config_context_data: Boolean = false,
       $get_location: Boolean = false, 
-      $get_name: Boolean = false, 
+      $get_name: Boolean = false,
+      $get_parent_bay: Boolean = false,
       $get_primary_ip4: Boolean = false, 
       $get_platform: Boolean = false, 
       $get_position: Boolean = false,
@@ -268,19 +271,38 @@ queries:
       $get_tags: Boolean = false, 
       $get_tenant: Boolean = false,
       __query_vars__
-    ) {
-      devices(__devices_params__) {
+    ) 
+    {
+      devices(__devices_params__) 
+      {
         id @include(if: $get_id)
         name @include(if: $get_name)
         hostname: name @include(if: $get_hostname)
+        asset_tag @include(if: $get_asset_tag)
+        config_context @include(if: $get_config_context)
+        _custom_field_data @include(if: $get_cf)
+        _custom_field_data @include(if: $get__custom_field_data)
+        custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+        position @include(if: $get_position)
+        serial @include(if: $get_serial)
+        local_config_context_data @include(if: $get_local_config_context_data)
         primary_ip4 @include(if: $get_primary_ip4) 
         {
           id @include(if: $get_id)
+          description
           ip_version
           address
-          description
+          host
           mask_length
           dns_name
+          parent {
+            id @include(if: $get_id)
+            prefix
+          }
+          status {
+            id @include(if: $get_id)
+            name
+          }
           interfaces {
             id @include(if: $get_id)
             name
@@ -343,13 +365,6 @@ queries:
           id @include(if: $get_id)
           name
         }
-        asset_tag @include(if: $get_asset_tag)
-        config_context @include(if: $get_config_context)
-        _custom_field_data @include(if: $get_cf)
-        _custom_field_data @include(if: $get__custom_field_data)
-        custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
-        position @include(if: $get_position)
-        serial @include(if: $get_serial)
         interfaces (__interfaces_params__) @include(if: $get_interfaces)
         {
           id @include(if: $get_id)
@@ -432,6 +447,16 @@ queries:
             id @include(if: $get_id)
             name
           }
+        }
+        parent_bay @include(if: $get_parent_bay)
+        {
+          id @include(if: $get_id)
+          name
+        }
+        device_bays @include(if: $get_device_bays)
+        {
+          id @include(if: $get_id)
+          name
         }
       }
     }
