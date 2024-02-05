@@ -25,7 +25,8 @@ from veritas.onboarding.tags import get_tag_properties as _get_tag_properties
 class Onboarding():
 
     def __init__(self, profile=None, username=None, password=None, 
-                 config_filename=None, profile_filename='profiles.yaml'):
+                 config_filename=None, profile_filename='profiles.yaml',
+                 tcp_port=22):
 
         self._all_defaults = None
         self._configparser = None
@@ -36,6 +37,7 @@ class Onboarding():
         self._profile_name = profile
         self._username = username
         self._password = password
+        self._tcp_port = tcp_port
 
         # read onboarding config
         main = path.abspath(str(sys.modules['__main__']))
@@ -340,8 +342,7 @@ class Onboarding():
                                     device_ip, 
                                     device_defaults, 
                                     import_config=False,
-                                    import_filename=None,
-                                    ssh_port=22):
+                                    import_filename=None):
         """get config and facts from the device or import it from disk"""
 
         device_facts = {}
@@ -350,7 +351,7 @@ class Onboarding():
                                    manufacturer=device_defaults.get('manufacturer','cisco'),
                                    username=self._username,
                                    password=self._password,
-                                   port=ssh_port,
+                                   port=self._tcp_port,
                                    scrapli_loglevel='none')
 
         if import_config:
