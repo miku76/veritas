@@ -7,7 +7,14 @@ This is a quick (and hopefully not dirty) quickstart guide to install veritas.
 Installing veritas
 ==================
 
-The easiest way is to use a virtual python-environment. There are different ways to create such an environment. conda offers one possibility. If you have conda installed, you can create a new environment as follows:
+The easiest way is to use a virtual python-environment. There are different ways to create 
+such an environment. 
+
+conda
+=====
+
+conda offers one possibility. If you have conda installed, you can 
+create a new environment as follows:
 
 .. code-block:: python
 
@@ -27,8 +34,19 @@ To install veritas, poetry must first be installed.
 
     conda install poetry
 
+venv
+====
+venv is another possibility to create your virtual environment
 
-to install veritas:
+.. code-block:: shell
+
+    python -m venv veritas
+    source veritas_env/bin/activate
+    python -m pip install poetry
+
+install veritas
+===============
+To install veritas:
 
 .. code-block:: python
 
