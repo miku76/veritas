@@ -168,7 +168,7 @@ def get_primary_interface_by_address(primary_address, ciscoconf):
         primary_interface['name'] = "primaryInterface"
         primary_interface['description'] = "primary interface"
         primary_interface['cidr'] = f'{primary_address}/32'
-        primary_interface['address'] = interface.get('ip')
+        primary_interface['address'] = primary_address
 
     # we use 'address' instead of 'ip' because nautobot uses this name
     if 'ip' in primary_interface:
