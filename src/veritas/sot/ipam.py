@@ -11,14 +11,13 @@ class Ipam(object):
         # open connection to nautobot
         self._nautobot = self._sot.open_nautobot()
 
-    def add_ip(self, *unnamed, **named):
+    def add_ip(self, address):
         """add IP address to ipam"""
-        properties = tools.convert_arguments_to_properties(*unnamed, **named)
-
         try:
-            return self._nautobot.ipam.ip_addresses.create(properties)
+            return self._nautobot.ipam.ip_addresses.create(address)
         except Exception as exc:
-            logger.bind(extra=properties.get("address","unset")).error(f'could not add ip address; got exception {exc}')
+            #logger.bind(extra=address.get("address","unset")).error(f'could not add ip address; got exception {exc}')
+            logger.error(f'could not add ip address; got exception {exc}')
             return False
 
     def get_ip(self, *unnamed, **named):
@@ -154,6 +153,9 @@ class Ipam(object):
         except Exception as exc:
             logger.error(f'failed to get assignment; got exception {exc}')
             return None
+
+    def get_choices(self):
+        return self._nautobot.ipam.ip_addresses.choices()
 
     def assign_ipaddress_to_interface(self, interface, address, device=None, namespace='Global') -> bool:
         """private method to assign IPv4 address to interface set primary IPv4
