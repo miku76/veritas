@@ -100,7 +100,7 @@ def get_vlan_properties(ciscoconf, device_defaults):
         name = vlan.get('name','')
         if '-' in vid or ',' in vid:
             continue
-        if not f'{vid}__{location}' in all_vlans:
+        if f'{vid}__{location}' not in all_vlans:
             all_vlans[f'{vid}__{location}'] = True
             list_of_vlans.append({'name': name,
                                   'vid': vid,
@@ -112,7 +112,7 @@ def get_vlan_properties(ciscoconf, device_defaults):
         name = vlan.get('name','')
         if '-' in vid or ',' in vid:
             continue
-        if not f'{vid}__{location}' in all_vlans:
+        if f'{vid}__{location}' not in all_vlans:
             all_vlans[f'{vid}__{location}'] = True
             list_of_vlans.append({'name': name,
                                   'vid': vid,
@@ -124,7 +124,7 @@ def get_vlan_properties(ciscoconf, device_defaults):
         name = vlan.get('name','')
         if '-' in vid or ',' in vid:
             continue
-        if not f'{vid}__{location}' in all_vlans:
+        if f'{vid}__{location}' not in all_vlans:
             all_vlans[f'{vid}__{location}'] = True
             list_of_vlans.append({'name': name,
                                   'vid': vid,
