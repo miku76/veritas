@@ -632,8 +632,8 @@ class Onboarding:
                 if 'The fields device, name must make a unique set' in str(exc):
                     logger.error('one or more interfaces were already in nautobot')
                 else:
-                    logger.error('got exception: {exc}')
-                    logger.debug('failed interfaces: {interfaces}')
+                    logger.error(f'got exception: {exc}')
+                    logger.debug(f'failed interfaces: {interfaces}')
                 return False
         else:
             for interface in interfaces:
