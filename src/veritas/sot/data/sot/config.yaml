@@ -250,6 +250,7 @@ queries:
       $get_asset_tag: Boolean = false,
       $get_cf: Boolean = false,
       $get_custom_field_data: Boolean = false,
+      $get_custom_fields: Boolean = false,
       $get__custom_field_data: Boolean = false,
       $get_config_context: Boolean = false,
       $get_device_bays: Boolean = false,
@@ -283,6 +284,7 @@ queries:
         _custom_field_data @include(if: $get_cf)
         _custom_field_data @include(if: $get__custom_field_data)
         custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+        custom_fields : _custom_field_data @include(if: $get_custom_fields)
         position @include(if: $get_position)
         serial @include(if: $get_serial)
         local_config_context_data @include(if: $get_local_config_context_data)
@@ -359,6 +361,11 @@ queries:
           id @include(if: $get_id)
           name
           description
+          location_type
+          {
+            id @include(if: $get_id)
+            name
+          }
         }
         status @include(if: $get_status) 
         {
