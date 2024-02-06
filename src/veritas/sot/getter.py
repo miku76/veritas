@@ -100,7 +100,7 @@ class Getter(object):
 
     def hldm(self, device, get_id=True):
                 # select ALL possible values
-        select = ['asset_tag', 'custom_field_data', 'config_context', 'device_bays',
+        select = ['asset_tag', 'custom_fields', 'config_context', 'device_bays',
                   'device_type','interfaces' , 'local_config_context_data', 
                   'location' , 'name', 'parent_bay', 'primary_ip4',
                   'platform', 'position', 'rack' , 'role', 'serial', 'status',
@@ -190,6 +190,12 @@ class Getter(object):
             return self._execute_sql_query(select=select, using=using, where=where)
         else:
             return self._execute_gql_query(select=select, using=using, where=where)
+
+    def get_ipam_choices(self):
+        return self._nautobot.ipam.ip_addresses.choices()
+
+    def get_interface_type_choices(self):
+        return self._nautobot.dcim.interfaces.choices()
 
     # -----===== internals =====-----
 
