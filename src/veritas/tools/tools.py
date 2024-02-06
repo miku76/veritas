@@ -61,12 +61,12 @@ def get_miniapp_config(appname:str, app_path:str, config_file:str=None, subdir:s
                         f'or {etc_config_file} exist')
         return None
 
-    with open(filename) as f:
-        try:
+    try:
+        with open(filename) as f:
             return yaml.safe_load(f.read())
-        except Exception as exc:
-            logger.error(f'could not read or parse config; got exception {exc}')
-            return None
+    except Exception as exc:
+        logger.error(f'could not read or parse config; got exception {exc}')
+        return None
 
 def get_value_from_dict(dictionary:dict, keys:list):
     """get value from dict
