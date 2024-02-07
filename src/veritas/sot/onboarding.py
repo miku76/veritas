@@ -561,6 +561,7 @@ class Onboarding:
         try:
             device_name = device_properties.get('name')
             logger.info(f'adding device {device_name} to SOT')
+            logger.trace(f'device_properties={device_properties}')
             device = self._nautobot.dcim.devices.create(device_properties)
             if device is None:
                 logger.error(f'could not add device {device_name} to SOT')
