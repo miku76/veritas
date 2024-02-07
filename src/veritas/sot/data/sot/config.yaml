@@ -254,7 +254,8 @@ queries:
       $get__custom_field_data: Boolean = false,
       $get_config_context: Boolean = false,
       $get_device_bays: Boolean = false,
-      $get_device_type: Boolean = false, 
+      $get_device_type: Boolean = false,
+      $get_face: Boolean = false,
       $get_hostname: Boolean = true, 
       $get_id: Boolean = false, 
       $get_interfaces: Boolean = false,
@@ -271,6 +272,7 @@ queries:
       $get_status: Boolean = false,
       $get_tags: Boolean = false, 
       $get_tenant: Boolean = false,
+      $get_vrfs: Boolean = false,
       __query_vars__
     ) 
     {
@@ -286,6 +288,7 @@ queries:
         custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
         custom_fields : _custom_field_data @include(if: $get_custom_fields)
         position @include(if: $get_position)
+        face @include(if: $get_face)
         serial @include(if: $get_serial)
         local_config_context_data @include(if: $get_local_config_context_data)
         primary_ip4 @include(if: $get_primary_ip4) 
@@ -355,6 +358,11 @@ queries:
         {
           id @include(if: $get_id)
           name
+          rack_group
+          {
+            id @include(if: $get_id)
+            name
+          }
         }
         location @include(if: $get_location) 
         {
@@ -371,6 +379,18 @@ queries:
         {
           id @include(if: $get_id)
           name
+        }
+        vrfs @include(if: $get_vrfs) 
+        {
+          id @include(if: $get_id)
+          name
+          namespace 
+          {
+            id @include(if: $get_id)
+            name
+          }
+          rd
+          description
         }
         interfaces (__interfaces_params__) @include(if: $get_interfaces)
         {
