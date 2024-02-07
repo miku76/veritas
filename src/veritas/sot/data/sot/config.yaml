@@ -401,9 +401,39 @@ queries:
           mac_address
           type
           mode
+          mtu
+          parent_interface
+          {
+            id @include(if: $get_id)
+            name
+          }
+          bridged_interfaces 
+          {
+            id @include(if: $get_id)
+            name
+          }
           status {
             id @include(if: $get_id)
             name
+          }
+          lag {
+            id @include(if: $get_id)
+            name
+            enabled
+          }
+          member_interfaces {
+            id @include(if: $get_id)
+            name
+          }
+          vrf 
+          {
+            id @include(if: $get_id)
+            name
+            namespace 
+            {
+              id @include(if: $get_id)
+              name
+            }
           }
           ip_addresses {
             address
@@ -411,8 +441,10 @@ queries:
               id @include(if: $get_id)
               name
             }
-            role {
+            role 
+            {
               id @include(if: $get_id)
+              name
             }
             tags {
               id @include(if: $get_id)
@@ -429,50 +461,52 @@ queries:
               }
             }
           }
-          connected_circuit_termination {
-            circuit {
+          connected_circuit_termination 
+          {
+            circuit 
+            {
               cid
               commit_rate
-              provider {
+              provider 
+              {
+                id @include(if: $get_id)
                 name
               }
             }
           }
-          tagged_vlans {
+          tagged_vlans 
+          {
             id @include(if: $get_id)
             name
             vid
           }
-          untagged_vlan {
+          untagged_vlan 
+          {
             id @include(if: $get_id)
             name
             vid
           }
-          cable {
+          cable 
+          {
             id @include(if: $get_id)
             termination_a_type
-            status {
+            status 
+            {
+              id @include(if: $get_id)
               name
             }
             color
           }
-          tags {
+          tags 
+          {
             id @include(if: $get_id)
             name
-            content_types {
-              id
+            content_types 
+            {
+              id @include(if: $get_id)
               app_label
               model
             }
-          }
-          lag {
-            id @include(if: $get_id)
-            name
-            enabled
-          }
-          member_interfaces {
-            id @include(if: $get_id)
-            name
           }
         }
         parent_bay @include(if: $get_parent_bay)
