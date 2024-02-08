@@ -396,8 +396,9 @@ class Onboarding:
         virtual_interfaces = []
         physical_interfaces = []
         for interface in interfaces:
-            interface_name = interface['name']
-            if interface and 'port-channel' in interface_name.lower():
+            interface_type = interface.get('type')
+            #if interface and 'port-channel' in interface_name.lower():
+            if interface and interface_type.lower() == 'lag':
                 virtual_interfaces.append(interface)
             else:
                 physical_interfaces.append(interface)
@@ -406,8 +407,8 @@ class Onboarding:
 
         if device and len(interfaces) > 0:
             # add interfces to nautobot
-            v_response = self._add_interfaces_to_nautobot(device, virtual_interfaces)
-            p_response = self._add_interfaces_to_nautobot(device, physical_interfaces)
+            v_response = self._add_interfaces_to_nautobot(device, virtual_interfaces, 'virtual')
+            p_response = self._add_interfaces_to_nautobot(device, physical_interfaces, 'physical')
             # the interfaces were added; now add the IP addresses of ALL interfaces
             for interface in interfaces:
                 ip_addresses = interface.get('ip_addresses',[])
@@ -604,7 +605,7 @@ class Onboarding:
             logger.error(exc)
         return False
 
-    def _add_interfaces_to_nautobot(self, device, interfaces:list):
+    def _add_interfaces_to_nautobot(self, device, interfaces:list, debug_msg=''):
         """private method to add interfaces to nautobot
 
         Parameters
@@ -620,7 +621,7 @@ class Onboarding:
             True if successful
 
         """
-        logger.debug(f'adding {len(interfaces)} interfaces to device {device}')
+        logger.debug(f'adding {len(interfaces)} {debug_msg} interfaces to device {device}')
         for interface in interfaces:
             if 'device' not in interface:
                 interface['device'] = {'id': device.id}

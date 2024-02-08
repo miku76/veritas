@@ -33,6 +33,11 @@ def get_properties(device_defaults, ciscoconf, name):
             'description': description,
             'status': {'name': 'Active'}
     }
+
+    if 'port-channel' in name.lower():
+        interface_properties.update({'type': 'lag'})
+        logger.bind(extra='iface').trace('key=type value=lag')
+
     if 'ip' in interface:
         ip = interface.get("ip")
         # in case there is a / in our IP (this should not happen)
@@ -49,10 +54,11 @@ def get_properties(device_defaults, ciscoconf, name):
                                         }
                                      ]})
 
-    # check if interface is lag
+    # check if interface is part of lag
     if 'channel_group' in interface:
         pc = "%s%s" % (ciscoconf.get_name("port-channel"), interface.get('channel_group'))
-        # logger.debug(f'interface {name} is part of port-channel {pc}')
+        logger.debug(f'interface {name} is part of port-channel {pc}')
+        logger.bind(extra='iface').trace(f'key=lag.name value={pc}')
         interface_properties.update({'lag': {'name': pc }})
 
     # setting switchport or trunk

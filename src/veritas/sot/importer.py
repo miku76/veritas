@@ -61,14 +61,14 @@ class Importer(object):
         if bulk:
             success = self.add_entity(creator, data)
             if success:
-                logger.info(f'{title} successfully added to sot')
+                logger.debug(f'{title} successfully added to sot')
             else:
                 logger.error(f'could not add {title} to sot')
         else:
             for item in data:
                 success = self.add_entity(creator, item)
                 if success:
-                    logger.info(f'{title} successfully added to sot')
+                    logger.debug(f'{title} successfully added to sot')
                 else:
                     logger.error(f'could not add {title} to sot')
         return success
