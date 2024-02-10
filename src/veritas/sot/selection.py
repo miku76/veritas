@@ -46,7 +46,8 @@ class Selection(object):
 
         self._normalize = False
         self._node_id = 0
-        self.__cf_types = None
+        self._cf_types = None
+        self._reformat = None
 
         # everything we need to join two tables
         self._join = None
@@ -72,7 +73,7 @@ class Selection(object):
                     self._select = v
 
     def using(self, schema:str) -> None:
-        """_summary_
+        """configures which data source to use
 
         Parameters
         ----------
@@ -164,8 +165,29 @@ class Selection(object):
         -----
         - We implement a fluent syntax. This methods returns self
         """
-        logger.debug('setting mode to {mode}')
+        logger.debug(f'setting mode to {mode}')
         self._mode = mode
+        return self
+
+    def reformat(self, reformat:str) -> None:
+        """reformat
+
+        Parameters
+        ----------
+        reformat : str
+           reformat response data
+
+        Returns
+        -------
+        obj : Selection
+            Selection
+        
+        Notes
+        -----
+        - We implement a fluent syntax. This methods returns self
+        """
+        logger.debug(f'setting reformat to {reformat}')
+        self._reformat = reformat
         return self
 
     def where(self, *unnamed, **named):
@@ -254,13 +276,18 @@ class Selection(object):
 
     # GQL mode 
     def _parse_gql_query(self, expression, select, using):
-        """parsw GraphQL mode query"""
-        return self._sot.get.query(select=select, using=using, where=expression, mode='gql')
+        """parse GraphQL mode query"""
+        return self._sot.get.query(
+            select=select, 
+            using=using, 
+            where=expression, 
+            mode='gql',
+            reformat=self._reformat)
 
     # SQL mode below
 
     def _parse_sql_query(self, expression, select, using):
-        logger.debug(f'expression {expression} ({len(expression)})')
+        logger.bind(extra="parse").debug(f'expression {expression}')
         # lets check if we have a logical operation
         found_logical_expression = False
         try:
@@ -268,23 +295,29 @@ class Selection(object):
                 res = boolean_parser(expression)
                 res.logicop
                 # yes we have one ... parse it
-                logger.debug(f'logical expression found {expression}')
+                logger.bind(extra="parse").debug(f'logical expression found {expression}')
                 found_logical_expression = True
         except Exception:
-            logger.debug(f'no logical operation found ... simple call {expression}')
+            logger.bind(extra="parse").debug(f'no logical operation found ... simple expression {expression}')
 
         if found_logical_expression:
             self._node_id = 0
+            logger.bind(extra="parse").debug('building logical tree')
             logical_tree = self._build_logical_tree(res)
+            logger.bind(extra="parse").debug('condense logical tree')
             self._condense_tree(logical_tree)
+            logger.bind(extra="parse").debug('query logical tree')
             self._query_logical_tree(logical_tree, select, using)
             response = logical_tree.root.response
         else:
-            response = self._simple_sql_query(expression, select, using)
+            response = self._simple_sql_query(
+                select=select,
+                using=using,
+                expression=expression)
         
         return response
 
-    def _simple_sql_query(self, properties, select, using):
+    def _simple_sql_query(self, select, using, expression):
         """return data of simple SQL queries
            This is a query that runs independently, so no additional data is required.
         """
@@ -298,21 +331,36 @@ class Selection(object):
         else:
             default={'name': ''}
 
-        if isinstance(properties, list):
-            if len(properties) == 0:
+        # look at the expression. where must be a dict!
+        # it is either a list ... parse it and make a dict
+        if isinstance(expression, list):
+            logger.bind(extra="simple_sql").trace(f'expression {expression} is a list')
+            if len(expression) == 0:
                 where = default
             else:
-                for p in properties:
+                for p in expression:
                     if '=' in p:
                         key, value = p.split('=')
                         where = {key: value}
-        elif '=' in properties:
-            key, value = properties.split('=')
+        elif isinstance(expression, dict):
+            logger.bind(extra="simple_sql").trace('expression is dict.Leave it as it is.')
+            where = expression
+        elif '=' in expression:
+            # or a string .... split it and make a dict
+            logger.bind(extra="simple_sql").trace('expression is string and contains "="')
+            key, value = expression.split('=')
             where = {key: value}
         else:
+            # or we use the default value
+            logger.bind(extra="simple_sql").trace('setting default value as expression')
             where = default
 
-        return self._sot.get.query(select=select, using=using, where=where, mode='sql')
+        return self._sot.get.query(
+            select=select, 
+            using=using, 
+            where=where, 
+            mode='sql', 
+            reformat=self._reformat)
 
     def _build_logical_tree(self, res):
         """parse logical expression and build tree"""
@@ -328,6 +376,8 @@ class Selection(object):
             cond = s.get('cond')
             parent = s.get('parent')
             node = AnyNode(id=id, parent=parent)
+            logger.bind(extra="build tree").trace(f'cond=\'{cond}\' parent={parent} node={node}')
+
             # set root of tree
             if not root:
                 root = node
@@ -335,13 +385,14 @@ class Selection(object):
                 operator = 'or' if isinstance(cond, BoolOr) else 'and'
                 node.operator = operator
                 node.values = None
-                # node.where = None
                 for c in cond.conditions:
+                    logger.bind(extra="build tree").trace(f'append to stack... operator={operator} condition={c}')
                     stack.append({'cond': c, 
                                   'parent': node})
             else:
                 node.values=self._convert_expression(cond.data)
                 node.operator = None
+                logger.bind(extra="build tree").trace(f'convert expression... node.values={node.values}')
         return root
 
     def _convert_expression(self, expression):
@@ -350,7 +401,7 @@ class Selection(object):
         operator = expression.get('operator')
         value = expression.get('value')
         
-        logger.debug(f'field: {field} operator: {operator} value: {value}')
+        logger.bind(extra="convert").debug(f'field: {field} operator: {operator} value: {value}')
         if operator == '!=':
             return {f'{field}__ne': [value]}
         else:
@@ -366,16 +417,16 @@ class Selection(object):
         self._refresh_cf_types()
 
         run = 1
-        logger.debug(f'condense run {run}')
+        logger.bind(extra="condense").debug(f'condense run {run}')
         while self._condense_single_run(root):
             run += 1
-            logger.debug(f'condense run {run}')
+            logger.bind(extra="condense").debug(f'condense run {run}')
 
     def _refresh_cf_types(self):
         nb = self._sot.open_nautobot()
-        self.__cf_types = {}
+        self._cf_types = {}
         for t in nb.extras.custom_fields.all():
-            self.__cf_types[t.display] = {'type': str(t.type)}
+            self._cf_types[t.display] = {'type': str(t.type)}
 
     def _condense_single_run(self, root):
         nodes = search.findall(root, filter_=lambda node: node.values is None)
@@ -383,30 +434,32 @@ class Selection(object):
         for node in nodes:
             if node.operator == 'or':
                 if all(c.is_leaf for c in node.children):
-                    logger.debug(f'id: {node.id} operator "or" and all childrens are leafs')
+                    logger.bind(extra="condense sr").debug(f'id: {node.id} operator "or" and all childrens are leafs')
                     merged = {}
                     cf_type_supported = True
                     for c in node.children:
                         for key, value in c.values.items():
                             if key.startswith('cf_'):
+                                key_withhout_cf = key.replace('cf_','')
                                 # check if cf_type supports merging
-                                if self.__cf_types.get(key.replace('cf_','')).get('type','') == 'Text':
+                                if key_withhout_cf not in self._cf_types:
+                                    logger.error(f'unknown key {key}; aborting')
+                                    raise KeyError(f'unknown key {key}')
+                                if self._cf_types.get(key_withhout_cf).get('type','') == 'Text':
                                     cf_type_supported = False
                         if c.values:
                              merged = self._merge_dicts(merged, c.values)
                     if len(merged) == 1 and cf_type_supported:
-                        logger.debug(f'leafs can be merged to {merged}')
-                        # f = list(merged.keys())
+                        logger.bind(extra="condense sr").debug(f'leafs can be merged to {merged}')
                         node.values = self._merge_dicts(node.values, merged) if node.values else merged
                         node.children = []
                         something_condensed = True
             elif node.operator == 'and':
                 if all(c.is_leaf for c in node.children):
-                    logger.debug(f'id: {node.id} operator "and" and all childrens are leafs')
+                    logger.bind(extra="condense sr").debug(f'id: {node.id} operator "and" and all childrens are leafs')
                     merged = {}
                     for c in node.children:
                         merged = self._merge_dicts(merged, c.values) if c.values else merged
-                    # f = list(merged.keys())
                     node.values = self._merge_dicts(node.values, merged) if node.values else merged
                     node.children = []
                     node.operator = None
@@ -425,19 +478,34 @@ class Selection(object):
             select += ['id']
         # walk through tree; childrens first than the other nodes
         for node in PostOrderIter(logical_tree):
-            logger.debug(f'id: {node.id} operator: {node.operator} leaf: {node.is_leaf}')
+            logger.bind(extra="query lt").debug(f'id: {node.id} operator: {node.operator} leaf: {node.is_leaf}')
             if node.is_leaf:
+                logger.bind(extra="query lt").debug(f'node is leaf; type(node.values) = {type(node.values)}')
+                logger.bind(extra="query lt").trace(f'node.values={node.values}')
+                values = {}
+                for key,value in node.values.items():
+                    # executing SQL query needs a string and not a list as where clause
+                    # but boolean expressions returns a list
+                    logger.bind(extra="query lt").debug(f'key={key} value={value} type(value)={type(value)}')
+                    if isinstance(value, list) and len(value) == 1:
+                        values[key] = value[0]
+                    else:
+                        values[key] = value
                 node.response = self._sot.get.query(select=select,
                                                     using=using,
-                                                    where=node.values)
+                                                    where=values,
+                                                    mode='sql',
+                                                    reformat=self._reformat)
             else:
                 # have a look at the children and do the logical operation
                 if node.operator == 'or':
+                    logger.bind(extra="query lt").debug('node.operator is or')
                     lists = []
                     for c in node.children:
                         lists.append(c.response)
                     node.response = self._get_items(lists)
                 elif node.operator == 'and':
+                    logger.bind(extra="query lt").debug('node.operator is and')
                     lists = []
                     for c in node.children:
                         lists.append(c.response)
