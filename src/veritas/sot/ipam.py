@@ -31,25 +31,14 @@ class Ipam(object):
         return self._nautobot.ipam.ip_addresses.get(address=address,
                                                     namespace=namespace)
 
-    def get_vlans(self, *unnamed, **named):
-        """return a list of VLANs depending on the properties"""
+    #def get_vlans(self, *unnamed, **named):
+    def get_vlans(self, vid=None, name=None, location='', location_type=None,
+                  get_single_id=None, get_obj=None, 
+                  select=['id', 'vid', 'name', 'location']):
+        """return a list of VLANs depending on the arguments"""
 
         # the list of vlans to return
         response = []
-
-        # get properties
-        properties = tools.convert_arguments_to_properties(unnamed, named)
-
-        vid = properties.get('vid')
-        name = properties.get('name')
-        location = properties.get('location','')
-        location_type = properties.get('location_type')
-        # if the user wants to get the id only (if one vlan)
-        get_single_id = properties.get('get_single_id')
-        # return objects
-        get_obj = properties.get('get_obj')
-        # the user can get other values; default is set
-        select = properties.get('select', ['id', 'vid', 'name', 'location'])
 
         # set global_vid if user wants to see the global VLANs (without location)
         global_vid = False
@@ -104,7 +93,7 @@ class Ipam(object):
                 logger.debug('either location nor location_type set')
                 response.append(vlan)
 
-        # if get_single_id is set and we have only one item we return the id only
+        # if get_single_id is set and we have only one item we only return the id
         if get_single_id and len(response) == 1:
             id = response[0].get('id')
             if get_obj:
