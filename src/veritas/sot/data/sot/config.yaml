@@ -58,6 +58,10 @@ queries:
         id @include(if: $get_id)
         prefix @include(if: $get_prefix)
         prefix_length @include(if: $get_prefix_length)
+        role @include(if: $get_role) {
+          id @include(if: $get_id)
+          name
+        }
         parent @include(if: $get_parent) {
           id @include(if: $get_id)
           prefix
@@ -523,7 +527,7 @@ queries:
     }
 
   nb.ipaddresses: >
-    query IPadresses( 
+    query IPaddresses(
       $get_address: Boolean = false,
       $get_config_context: Boolean = false, 
       $get_cf: Boolean = false,
@@ -532,15 +536,19 @@ queries:
       $get_description: Boolean = false,
       $get_device_type: Boolean = false, 
       $get_dns_name: Boolean = false,
-      $get_hostname: Boolean = true, 
+      $get_host: Boolean = false,
+      $get_hostname: Boolean = false, 
       $get_id: Boolean = false, 
       $get_interfaces: Boolean = false,
       $get_interface_assignments: Boolean = false,
-      $get_location: Boolean = false, 
+      $get_ip_version: Boolean = false,
+      $get_location: Boolean = false,
+      $get_mask_length: Boolean = false,
       $get_name: Boolean = false, 
       $get_parent: Boolean = false,
       $get_platform: Boolean = false, 
-      $get_primary_ip4_for: Boolean = false, 
+      $get_primary_ip4_for: Boolean = false,
+      $get_primary_ip4: Boolean = false,
       $get_role: Boolean = false, 
       $get_serial: Boolean = false,
       $get_status:  Boolean = false,
@@ -636,15 +644,18 @@ queries:
           id @include(if: $get_id)
           name @include(if: $get_name)
           hostname: name @include(if: $get_hostname)
-          role @include(if: $get_role) {
+          role @include(if: $get_role) 
+          {
             id @include(if: $get_id)
             name
           }
-          device_type @include(if: $get_device_type) {
+          device_type @include(if: $get_device_type) 
+          {
             id @include(if: $get_id)
             model
           }
-          platform @include(if: $get_platform) {
+          platform @include(if: $get_platform) 
+          {
             id @include(if: $get_id)
             name
             manufacturer {
@@ -652,7 +663,8 @@ queries:
               name
             }
           }
-          tags @include(if: $get_tags) {
+          tags @include(if: $get_tags) 
+          {
             id @include(if: $get_id)
             name
             content_types {
@@ -661,7 +673,8 @@ queries:
               model
             }
           }
-          tenant @include(if: $get_tenant) {
+          tenant @include(if: $get_tenant) 
+          {
             id @include(if: $get_id)
             name
             tenant_group {
@@ -669,7 +682,8 @@ queries:
             }
           }
           serial @include(if: $get_serial)
-          status @include(if: $get_status) {
+          status @include(if: $get_status)
+          {
             id @include(if: $get_id)
             name
           }
@@ -677,7 +691,38 @@ queries:
           _custom_field_data @include(if: $get_cf)
           _custom_field_data @include(if: $get__custom_field_data)
           custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
-          interfaces (__interfaces_params__) @include(if: $get_interfaces) {
+          primary_ip4 @include(if: $get_primary_ip4) 
+          {
+            id @include(if: $get_id)
+            description @include(if: $get_description)
+            ip_version @include(if: $get_ip_version)
+            address @include(if: $get_address)
+            host @include(if: $get_host)
+            mask_length @include(if: $get_mask_length)
+            dns_name @include(if: $get_dns_name)
+            parent @include(if: $get_parent)
+            {
+              id @include(if: $get_id)
+              prefix
+            }
+            status @include(if: $get_status) 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            interfaces @include(if: $get_interfaces) 
+            {
+              id @include(if: $get_id)
+              name
+              description
+              enabled
+              mac_address
+              type
+              mode
+            }
+          }
+          interfaces (__interfaces_params__) @include(if: $get_interfaces)
+          {
             id @include(if: $get_id)
             name
             device {
@@ -688,13 +733,15 @@ queries:
             mac_address
             type
             mode
-            ip_addresses {
+            ip_addresses 
+            {
               address
               role {
                 id @include(if: $get_id)
                 name
               }
-              tags {
+              tags 
+              {
                 id @include(if: $get_id)
                 name
                 content_types {
@@ -704,7 +751,8 @@ queries:
                 }
               }
             }
-            connected_circuit_termination {
+            connected_circuit_termination 
+            {
               circuit {
                 cid
                 commit_rate
@@ -713,24 +761,30 @@ queries:
                 }
               }
             }
-            tagged_vlans {
+            tagged_vlans 
+            {
               name
               vid
             }
-            untagged_vlan {
+            untagged_vlan 
+            {
               name
               vid
             }
-            cable {
+            cable 
+            {
               termination_a_type
-              status {
+              status 
+              {
                 name
               }
               color
             }
-            tags {
+            tags 
+            {
               name
-              content_types {
+              content_types 
+              {
                 id
                 app_label
                 model
