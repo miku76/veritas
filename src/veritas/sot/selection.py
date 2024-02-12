@@ -172,6 +172,8 @@ class Selection(object):
     def reformat(self, reformat:str) -> None:
         """reformat
 
+        If 'reformat' is set, the data received is transformed to a different format
+
         Parameters
         ----------
         reformat : str
