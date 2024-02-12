@@ -338,7 +338,6 @@ class Onboarding:
 
         """
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
-        #logger.debug(f'properties: {properties}')
 
         # add device to nautobot
         device = self._add_device_to_nautobot(properties)

@@ -88,7 +88,8 @@ class Devicemanagement:
         try:
             self._connection.close()
         except Exception:
-            logger.error('connection was not open')
+            # is it interesting to log something? I guess not
+            pass
 
     def disable_paging(self):
         if not self._connection:
@@ -190,8 +191,13 @@ class Devicemanagement:
         # get values from device
         # we have to use our own templates because there is a little bug parsing
         # show hosts summary on a iosv device
-        values = self.send_and_parse_command(commands=['show version', 'show hosts summary'],
-                                             own_templates=True)
+        values = self.send_and_parse_command(
+            commands=['show version', 'show hosts summary'],
+            own_templates=True)
+
+        if not values:
+            logger.error('got na values')
+            return None
 
         # parse values to get facts
         facts["manufacturer"] = self._manufacturer

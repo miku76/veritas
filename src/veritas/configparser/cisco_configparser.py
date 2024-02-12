@@ -1,16 +1,18 @@
 import yaml
 import importlib
-from veritas.tools import tools
 from ttp import ttp
 from loguru import logger
 
+# veritas
+from veritas.tools import tools
+from veritas.onboarding import plugins
+
 class Configparser(object):
 
-    def __init__(self, *unnamed, **named):
-        properties = tools.convert_arguments_to_properties(unnamed, named)
-        self._device_config = properties.get('config', None)
-        self._output_format = properties.get('output_format', 'json')
-        self._empty_config = properties.get('empty_config', False)
+    def __init__(self, config, platform='ios', output_format='json', empty_config=False):
+        self._device_config = config
+        self._output_format = output_format
+        self._empty_config = empty_config
         self._parser = None
         self._template = None
         self._template_filename = None
@@ -24,7 +26,7 @@ class Configparser(object):
         with importlib.resources.open_text(package, 'config.yaml') as f:
             self._my_config = yaml.safe_load(f.read())
 
-        if not self.parse(*unnamed, **named):
+        if not self.parse(config, platform):
             self._could_not_parse = True
 
     def could_not_parse(self):
@@ -34,19 +36,14 @@ class Configparser(object):
         self._output_format = format
         return self
 
-    def parse(self, *unnamed, **named):
-        properties = tools.convert_arguments_to_properties(unnamed, named)
-
+    def parse(self, config=None, platform='ios'):
         # get template
-        ttp_template = self._get_template(properties)
+        ttp_template = self._get_template(platform=platform)
         if not ttp_template:
             logger.debug('failed to get template; pasring aborted')
             return False
 
-        if self._device_config:
-            device_config = self._device_config
-        if 'config' in properties:
-            device_config = properties.get('config')
+        device_config = config if config else self._device_config
 
         # create parser object and parse data using template:
         logger.debug('parsing device config')
@@ -275,14 +272,11 @@ class Configparser(object):
             if 'port-channel' in interface:
                 self._naming["port-channel"] = "port-channel"
 
-    def _get_template(self, properties):
+    def _get_template(self, platform='ios'):
         if self._template is not None:
             return self._template
-        if 'template' in properties:
-            return properties.get('template')
 
         if self._template_filename is None:
-            platform = properties.get('platform','ios')
             # use default template that is configured in config
             filename = self._my_config.get('templates',{}).get(platform, None)
             logger.debug(f'using ttp template {filename}')
@@ -304,3 +298,7 @@ class Configparser(object):
             return None
         
         return ttp_template
+
+@plugins.configparser('ios')
+def get_configparser(config, platform):
+    return Configparser(config=config, platform=platform)

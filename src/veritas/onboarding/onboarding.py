@@ -1,32 +1,31 @@
 import os
 import yaml
-import sys
 import json
 import socket
 import csv
-from os import path
+import importlib
+import sys
+import pathlib
+from ipaddress import IPv4Network
 from loguru import logger
 from benedict import benedict
 from deepmerge import always_merger
 
 # veritas
 import veritas.repo
-from veritas.configparser import configparser as cfgparser
+from veritas.onboarding import plugins
 from veritas.sot import sot
 from veritas.tools import tools
-from veritas.devicemanagement import scrapli as dm
-from veritas.onboarding.devices import get_device_properties as _get_device_properties
-from veritas.onboarding.interfaces import get_vlan_properties as _get_vlan_properties
-from veritas.onboarding.interfaces import get_interface_properties as _get_interface_properties
-from veritas.onboarding.interfaces import get_primary_interface_by_address as _get_primary_interface_by_address
 from veritas.onboarding.tags import get_tag_properties as _get_tag_properties
 
 
 class Onboarding():
 
-    def __init__(self, profile=None, username=None, password=None, 
-                 config_filename=None, profile_filename='profiles.yaml',
-                 tcp_port=22):
+    def __init__(self, sot=None, onboarding_config=None, 
+                 username=None, password=None, tcp_port=22):
+
+        self._sot = sot
+        self._onboarding_config = onboarding_config
 
         self._all_defaults = None
         self._configparser = None
@@ -34,32 +33,29 @@ class Onboarding():
         self._device_facts = None
         self._device_defaults = None
         self._device_properties = None
-        self._profile_name = profile
         self._username = username
         self._password = password
         self._tcp_port = tcp_port
 
-        # read onboarding config
-        main = path.abspath(str(sys.modules['__main__']))
-        basedir = main.rsplit('/', 1)[0]
-        self._onboarding_config = tools.get_miniapp_config('onboarding', basedir, config_filename)
+        # load plugins
+        logger.debug('importing onboarding_plugins')
+        importlib.import_module('veritas.configparser.cisco_configparser')
+        self._load_module('config_and_facts', 'onboarding_plugins', 'ios_config_and_facts')
+        self._load_module('device_properties', 'onboarding_plugins', 'ios_device_properties')
+        self._load_module('interface_properties', 'onboarding_plugins', 'ios_interface_properties')
+        self._load_module('vlan_properties', 'onboarding_plugins', 'ios_vlan_properties')
 
-        # load profiles
-        profile_config = tools.get_miniapp_config('onboarding', basedir, profile_filename) if profile \
-            else None
-
-        # we need the SOT object to talk to it
-        self._sot = sot.Sot(token=self._onboarding_config['sot']['token'],
-                            ssl_verify=self._onboarding_config['sot'].get('ssl_verify', False),
-                            url=self._onboarding_config['sot']['nautobot'])
-
-        # get username and password either from profile or from the args
-        logger.debug(f'getting profile profile={profile} username={username}')
-        self._username, self._password = tools.get_username_and_password(
-                                                profile_config,
-                                                profile,
-                                                username, 
-                                                password)
+    def _load_module(self, name, package, subpackage):
+        current_dir = pathlib.Path(__file__).parent.resolve()
+        try:
+            spec = importlib.util.spec_from_file_location(name, f'{current_dir}/{package}/{subpackage}.py')
+            module = importlib.util.module_from_spec(spec)
+            sys.modules[subpackage] = module
+            spec.loader.exec_module(module)
+            return True
+        except Exception as exc:
+            logger.critical(f'failed to import plugin {current_dir}/{package}/{subpackage}.py; got exception {exc}')
+            return False
 
     def parse_config(self, device_config, device_facts, device_defaults):
         """parse config and save device_config, device_facst and device_defaults for later use"""
@@ -67,9 +63,16 @@ class Onboarding():
         self._device_facts = device_facts
         self._device_defaults = device_defaults
 
-        # parse config / configparser is a dict that contains all necessary data
-        self._configparser = cfgparser.Configparser(config=device_config, 
-                                                    platform=device_defaults.get('platform','ios'))
+        platform = device_defaults.get('platform','ios')
+        
+        # we use a plugin to parse the config
+        plugin = plugins.Plugin()
+        configparser = plugin.get_configparser(platform)
+        if not configparser:
+            logger.critical('failed to load configparser for platform {platform}')
+        else:
+            logger.debug(f'using plugin configparser for platform {platform}')
+        self._configparser = configparser(config=device_config, platform=platform)
 
         return self._configparser
 
@@ -345,43 +348,27 @@ class Onboarding():
                                     import_filename=None):
         """get config and facts from the device or import it from disk"""
 
-        device_facts = {}
-        conn = dm.Devicemanagement(ip=device_ip,
-                                   platform=device_defaults.get('platform','ios'),
-                                   manufacturer=device_defaults.get('manufacturer','cisco'),
-                                   username=self._username,
-                                   password=self._password,
-                                   port=self._tcp_port,
-                                   scrapli_loglevel='none')
-
         if import_config:
             return self.read_config_and_facts_from_file(import_filename)
 
-        # retrieve facts like fqdn, model and serialnumber
-        logger.debug('now gathering facts')
-        device_facts = conn.get_facts()
-
-        if device_facts is None:
-            logger.error('got no facts; skipping device')
-            if conn:
-                conn.close()
-            return None, None
-        device_facts['args.device'] = device_ip
-
-        # retrieve device config
-        logger.debug("getting running-config")
-        try:
-            device_config = conn.get_config("running-config")
-        except Exception as exc:
-            logger.error(f'failed to receive device config from {device_ip}; got exception {exc}', exc_info=True)
-            return None, None
-        if device_config is None:
-            logger.error(f'failed to retrieve device config from {device_ip}')
-            conn.close()
-            return None, None
-        conn.close()
-
-        return device_config, device_facts
+        #
+        # we use the plugin mechanism to get config and facts
+        # part of the default onboarding is cisco ios
+        # but the user can register its own plugin to get the config
+        #
+        platform = device_defaults.get('platform')
+        plugin = plugins.Plugin()
+        get_caf = plugin.get_config_and_facts(platform)
+        if not platform or not get_caf:
+            logger.critical(f'failed to get config and facts for platform {platform}')
+            raise Exception ('unknown platform')
+        return get_caf(
+            device_ip, 
+            device_defaults, 
+            self._username, 
+            self._password, 
+            self._tcp_port, 
+            scrapli_loglevel='none')
 
     def get_default_values_from_repo(self):
         """get default values of prefixes"""
@@ -465,7 +452,7 @@ class Onboarding():
         there are two cases:
 
         - the user has defined the primary interface in the inventory or 
-        - we have to check the device config to get the orimary interface
+        - we have to check the device config to get the primary interface
         
         If we find the primary interface in the device properties we have to 
         check if it is only the name or if it is a dict containing most of the 
@@ -489,20 +476,55 @@ class Onboarding():
                                     }
         else:
             # in this case we have to get the primary interface from the device config
-            primary_interface = _get_primary_interface_by_address(primary_address, self._configparser)
+            primary_interface = self.get_primary_interface_by_address(primary_address)
 
+        return primary_interface
+
+    def get_primary_interface_by_address(self, primary_address):
+        primary_interface = {}
+        interface_name = self._configparser.get_interface_name_by_address(primary_address)
+        interface = self._configparser.get_interface(interface_name)
+
+        # if we have the correct mask of the interface/ip we use this instead of a /32
+        if interface is not None:
+            # we modify the interface so we do have to use a copy!
+            primary_interface = interface.copy()
+            primary_interface['name'] = interface_name
+            # convert IP and MASK to cidr notation
+            prefixlen = IPv4Network("0.0.0.0/%s" % interface.get('mask')).prefixlen
+            primary_interface['cidr'] = "%s/%s" % (interface.get('ip'), prefixlen)
+            primary_interface['address'] = interface.get('ip')
+            logger.debug(f'found primary interface; setting primary_address interface to {primary_address}')
+            if 'description' not in interface:
+                logger.info("primary interface has no description configured; using 'primary interface'")
+                primary_interface['description'] = "primary interface"
+        else:
+            logger.debug('found no interface, setting default values')
+            primary_interface['name'] = "primaryInterface"
+            primary_interface['description'] = "primary interface"
+            primary_interface['cidr'] = f'{primary_address}/32'
+            primary_interface['address'] = primary_address
+
+        # we use 'address' instead of 'ip' because nautobot uses this name
+        if 'ip' in primary_interface:
+            del primary_interface['ip']
         return primary_interface
 
     def get_device_properties(self):
         """get device properties"""
 
+        # we use our plugin architecture to use the right module
+        platform = self._device_defaults.get('platform')
+        plugin = plugins.Plugin()
+        get_dp = plugin.get_device_properties(platform)
+
+        if not get_dp:
+            logger.critical(f'failed to get device properties for platform {platform}')
+            raise Exception ('unknown platform')
+
         device_properties = dict(self._device_defaults)
-        _get_device_properties(self._sot,
-                               device_properties,
-                               self._device_facts, 
-                               self._configparser, 
-                               self._onboarding_config)
-    
+        obj = get_dp(self._sot, self._device_facts, self._configparser, self._onboarding_config)
+        obj.get_device_properties(device_properties)
         if not device_properties:
             return None
 
@@ -530,13 +552,31 @@ class Onboarding():
         if not device_properties:
             device_properties = self._device_properties
 
-        return _get_vlan_properties(self._configparser, device_properties)
+        # we use our plugin architecture to use the right module
+        platform = self._device_defaults.get('platform')
+        plugin = plugins.Plugin()
+        get_vp = plugin.get_vlan_properties(platform)
+
+        if not get_vp:
+            logger.critical(f'failed to get vlan properties for platform {platform}')
+            raise Exception ('unknown platform')
+
+        return get_vp(self._configparser, device_properties)
 
     def get_interface_properties(self):
         """get interface properties of the device"""
 
-        return _get_interface_properties(self._device_defaults, 
-                                         self._configparser)
+        # we use our plugin architecture to use the right module
+        platform = self._device_defaults.get('platform')
+        plugin = plugins.Plugin()
+        get_ip = plugin.get_interface_properties(platform)
+
+        if not get_ip:
+            logger.critical(f'failed to get interface properties for platform {platform}')
+            raise Exception ('unknown platform')
+
+        obj = get_ip(self._configparser)
+        return obj.get_interface_properties(self._device_defaults)
 
     def add_device_to_sot(self, 
                           device_properties,
