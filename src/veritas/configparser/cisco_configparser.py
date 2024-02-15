@@ -122,7 +122,7 @@ class Configparser(abstract_configparser.Configparser):
         # get template
         ttp_template = self._get_template(platform=platform)
         if not ttp_template:
-            logger.debug('failed to get template; pasring aborted')
+            logger.debug('failed to get template; parsing aborted')
             return False
 
         device_config = config if config else self._device_config
