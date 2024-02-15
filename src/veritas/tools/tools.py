@@ -182,7 +182,7 @@ def convert_arguments_to_properties(*unnamed, **named):
     
     return properties
 
-def get_username_and_password(config:dict, profile:str=None, 
+def get_username_and_password(profile_config:dict, profile_name:str=None, 
                               cfg_username:str=None, cfg_password:str=None) -> list:
     """return username and password
 
@@ -205,9 +205,9 @@ def get_username_and_password(config:dict, profile:str=None,
     username = None
     password = None
 
-    if profile is not None:
-        username = config.get('profiles',{}).get(profile,{}).get('username')
-        token = config.get('profiles',{}).get(profile,{}).get('password')
+    if profile_name is not None:
+        username = profile_config.get('profiles',{}).get(profile_name,{}).get('username')
+        token = profile_config.get('profiles',{}).get(profile_name,{}).get('password')
         if username and token:
             password = veritas.auth.decrypt(token=token,
                                             encryption_key=os.getenv('ENCRYPTIONKEY'), 
