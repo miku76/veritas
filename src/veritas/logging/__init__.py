@@ -2,6 +2,7 @@ import sys
 from loguru import logger
 from importlib.metadata import version
 import functools
+import inspect
 from functools import partialmethod
 from datetime import time
 
@@ -88,8 +89,10 @@ def create_logger_environment(config, cfg_loglevel=None, cfg_loghandler=None, ap
     logger.add(loghandler, level=loglevel, format=logger_format)
 
     # create JOURNAL loglevel (does not work if zeromq)
-    logger.level("journal", no=journal_loglevel, color="<yellow>")
-    logger.__class__.journal = partialmethod(logger.__class__.log, "journal")
+    method_list = [method for method in dir(logger) if method.startswith('__') is False]
+    if 'journal' not in method_list:
+        logger.level("journal", no=journal_loglevel, color="<yellow>")
+        logger.__class__.journal = partialmethod(logger.__class__.log, "journal")
 
     if rabbitmq:
         logger.debug(f'enabling rabbitmq messagebus loglevel: {loglevel}')
