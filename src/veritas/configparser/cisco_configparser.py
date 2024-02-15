@@ -31,7 +31,7 @@ class Configparser(abstract_configparser.Configparser):
     # abstract methods (mandatory to implement)
     #
 
-    def get_ipaddress(self, interface):
+    def get_interface_ipaddress(self, interface):
         return self._parsed_config[0].get('interfaces', {}).get(interface, {}).get('ip', None)
 
     def get_interface_name_by_address(self, address):

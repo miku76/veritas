@@ -32,7 +32,7 @@ class Profile(object):
                 self._password = None
 
             # decrypt ssh_passphrase
-            if ssh_token:
+            if ssh_token and ssh_token.lower() != 'none':
                 self._ssh_passphrase = veritas.auth.decrypt(
                     token=ssh_token,
                     encryption_key=os.getenv('ENCRYPTIONKEY'), 

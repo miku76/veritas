@@ -68,7 +68,7 @@ class Onboarding():
         plugin = plugins.Plugin()
         configparser = plugin.get_configparser(platform)
         if not configparser:
-            logger.critical('failed to load configparser for platform {platform}')
+            logger.critical(f'failed to load configparser for platform {platform}')
         else:
             logger.debug(f'using plugin configparser for platform {platform}')
         self._configparser = configparser(config=device_config, platform=platform)
@@ -436,8 +436,8 @@ class Onboarding():
         # loop through device config and check if we find the interface
         for iface in interfaces:
             logger.debug(f'looking if {iface} is primary interface')
-            if self._configparser.get_ipaddress(iface) is not None:
-                return self._configparser.get_ipaddress(iface)
+            if self._configparser.get_interface_ipaddress(iface) is not None:
+                return self._configparser.get_interface_ipaddress(iface)
             else:
                 logger.debug(f'no ip address on {iface} found')
 

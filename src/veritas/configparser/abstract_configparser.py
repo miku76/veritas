@@ -8,7 +8,7 @@ class Configparser(ABC):
         pass
 
     @abstractmethod
-    def get_ipaddress(self, interface):
+    def get_interface_ipaddress(self, interface):
         pass
 
     @abstractmethod
@@ -27,3 +27,6 @@ class Configparser(ABC):
     def find_in_interfaces(self, properties):
         pass
 
+    @abstractmethod
+    def get_fqdn(self):
+        pass
