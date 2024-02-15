@@ -4,19 +4,17 @@ from ttp import ttp
 from loguru import logger
 
 # veritas
-from veritas.tools import tools
 from veritas.onboarding import plugins
+from veritas.configparser import abstract_configparser
 
-class Configparser(object):
 
-    def __init__(self, config, platform='ios', output_format='json', empty_config=False):
+class Configparser(abstract_configparser.Configparser):
+
+    def __init__(self, config, platform='ios'):
         self._device_config = config
-        self._output_format = output_format
-        self._empty_config = empty_config
         self._parser = None
         self._template = None
         self._template_filename = None
-        self._could_not_parse = False
         self._parsed_config = [{}]
         # naming is used to save the exact spelling of the interface
         # nxos and ios differs using Port-channel/Port-Channel/port-channel
@@ -27,55 +25,14 @@ class Configparser(object):
             self._my_config = yaml.safe_load(f.read())
 
         if not self.parse(config, platform):
-            self._could_not_parse = True
+            logger.critical('failed to parse config')
 
-    def could_not_parse(self):
-        return self._could_not_parse
+    #
+    # abstract methods (mandatory to implement)
+    #
 
-    def format(self, format):
-        self._output_format = format
-        return self
-
-    def parse(self, config=None, platform='ios'):
-        # get template
-        ttp_template = self._get_template(platform=platform)
-        if not ttp_template:
-            logger.debug('failed to get template; pasring aborted')
-            return False
-
-        device_config = config if config else self._device_config
-
-        # create parser object and parse data using template:
-        logger.debug('parsing device config')
-        try:
-            self._parser = ttp(data=device_config, 
-                               template=ttp_template,
-                               log_level="CRITICAL")
-            self._parser.parse()
-            self._parsed_config = self._parser.result(format='raw')[0]
-            self._save_naming()
-            return True
-        except Exception as exc:
-            if self._empty_config:
-                logger.debug('this is an empty config; return True')
-                return True
-            logger.error(f'failed to parse config; got exception {exc}')
-            return None
-
-    def get(self, *unnamed, **named):
-        properties = tools.convert_arguments_to_properties(unnamed, named)
-
-        format = properties.get('output_format', self._output_format)
-        return self._parser.result(format=format)[0]
-
-    def get_fqdn(self):
-        """return FQDN of device"""
-        domain = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('domain_name',"")
-        hostname = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('hostname')
-        if domain:
-            return f'{hostname}.{domain}'
-        else:
-            return hostname
+    def get_ipaddress(self, interface):
+        return self._parsed_config[0].get('interfaces', {}).get(interface, {}).get('ip', None)
 
     def get_interface_name_by_address(self, address):
         interfaces = self._parsed_config[0].get('interfaces', {})
@@ -85,76 +42,9 @@ class Configparser(object):
                 logger.debug(f'found IP {ip} on {name}')
                 return name
         return None
-    
-    def get_interface(self, interface):
-        return self._parsed_config[0].get('interfaces', {}).get(interface, None)
 
     def get_interfaces(self):
-        return self._parsed_config[0].get('interfaces', None)
-
-    def get_ipaddress(self, interface):
-        return self._parsed_config[0].get('interfaces', {}).get(interface, {}).get('ip', None)
-
-    def get_vlans(self):
-        global_vlans = []
-        svi = []
-        trunk_vlans = []
-
-        for vid, properties in self._parsed_config[0].get('global',{}).get('vlan',{}).items():
-            global_vlans.append({'vid': vid,
-                                 'name': properties.get('name', 'unknown')})
-    
-        for name, properties in self._parsed_config[0].get('interfaces', {}).items():
-            if 'vlan' in name.lower():
-                svi.append({'vid': name[4:],
-                            'name': properties.get('description','unkown')})
-            if 'vlans_allowed' in properties:
-                for vid in properties.get('vlans_allowed'):
-                    trunk_vlans.append({'vid': vid,
-                                        'name': 'trunked VLAN'})
-
-        return global_vlans, svi, trunk_vlans
-
-    def get_name(self, name):
-        return self._naming.get(name.lower(), name)
-
-    def get_device_config(self):
-        return self._device_config
-
-    def get_section(self, section):
-        response = []
-        if section == "interfaces":
-            found = False
-            for line in self._device_config.splitlines():
-                # find first occurence of the word interface at the beginning of the line
-                if line.lower().startswith('interface '):
-                    found = True
-                    response.append(line)
-                    continue
-                if found and line.startswith(' '):
-                    response.append(line)
-                else:
-                    found = False
-        else:
-            for line in self._device_config.splitlines():
-                # check if line begins with 'section'
-                if line.lower().startswith(section):
-                    response.append(line)
-
-        return response
-
-    def get_global_config(self):
-        response = []
-        for line in self._device_config.splitlines():
-            if line.lower().startswith('interface '):
-                found = True
-                continue
-            elif not line.lower().startswith('interface '):
-                found = False
-            if not found:
-                response.append(line)
-
-        return response
+        return self._parsed_config[0].get('interfaces', {})
 
     def find_in_global(self, properties):
         key = None
@@ -224,7 +114,109 @@ class Configparser(object):
         logger.debug(f'matched_on={matched_on}')
         return matched_on
 
-# internals
+    #
+    # optional functions
+    #
+
+    def parse(self, config=None, platform='ios'):
+        # get template
+        ttp_template = self._get_template(platform=platform)
+        if not ttp_template:
+            logger.debug('failed to get template; pasring aborted')
+            return False
+
+        device_config = config if config else self._device_config
+
+        # create parser object and parse data using template:
+        logger.debug('parsing device config')
+        try:
+            self._parser = ttp(data=device_config, 
+                               template=ttp_template,
+                               log_level="CRITICAL")
+            self._parser.parse()
+            self._parsed_config = self._parser.result(format='raw')[0]
+            self._save_naming()
+            return True
+        except Exception as exc:
+            logger.error(f'failed to parse config; got exception {exc}')
+            return None
+
+    def get_fqdn(self):
+        """return FQDN of device"""
+        domain = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('domain_name',"")
+        hostname = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('hostname')
+        if domain:
+            return f'{hostname}.{domain}'
+        else:
+            return hostname
+
+    def get_interface(self, interface):
+        return self._parsed_config[0].get('interfaces', {}).get(interface, None)
+
+    def get_vlans(self):
+        global_vlans = []
+        svi = []
+        trunk_vlans = []
+
+        for vid, properties in self._parsed_config[0].get('global',{}).get('vlan',{}).items():
+            global_vlans.append({'vid': vid,
+                                 'name': properties.get('name', 'unknown')})
+    
+        for name, properties in self._parsed_config[0].get('interfaces', {}).items():
+            if 'vlan' in name.lower():
+                svi.append({'vid': name[4:],
+                            'name': properties.get('description','unkown')})
+            if 'vlans_allowed' in properties:
+                for vid in properties.get('vlans_allowed'):
+                    trunk_vlans.append({'vid': vid,
+                                        'name': 'trunked VLAN'})
+
+        return global_vlans, svi, trunk_vlans
+
+    def get_name(self, name):
+        return self._naming.get(name.lower(), name)
+
+    def get_device_config(self):
+        return self._device_config
+
+    def get_section(self, section):
+        response = []
+        if section == "interfaces":
+            found = False
+            for line in self._device_config.splitlines():
+                # find first occurence of the word interface at the beginning of the line
+                if line.lower().startswith('interface '):
+                    found = True
+                    response.append(line)
+                    continue
+                if found and line.startswith(' '):
+                    response.append(line)
+                else:
+                    found = False
+        else:
+            for line in self._device_config.splitlines():
+                # check if line begins with 'section'
+                if line.lower().startswith(section):
+                    response.append(line)
+
+        return response
+
+    def get_global_config(self):
+        response = []
+        for line in self._device_config.splitlines():
+            if line.lower().startswith('interface '):
+                found = True
+                continue
+            elif not line.lower().startswith('interface '):
+                found = False
+            if not found:
+                response.append(line)
+
+        return response
+
+    #
+    # internals
+    #
 
     def _find_in_line(self, key, lookup, value, line):
         """
