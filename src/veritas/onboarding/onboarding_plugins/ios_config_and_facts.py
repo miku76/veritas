@@ -6,7 +6,7 @@ from veritas.onboarding import plugins
 
 
 @plugins.config_and_facts('ios')
-def get_device_config_and_facts(device_ip, device_defaults, username, password, tcp_port=22, scrapli_loglevel='none'):
+def get_device_config_and_facts(device_ip, device_defaults, profile, tcp_port=22, scrapli_loglevel='none'):
 
     device_config = None
     device_facts = {}
@@ -14,8 +14,8 @@ def get_device_config_and_facts(device_ip, device_defaults, username, password, 
         ip=device_ip,
         platform=device_defaults.get('platform','ios'),
         manufacturer=device_defaults.get('manufacturer','cisco'),
-        username=username,
-        password=password,
+        username=profile.username,
+        password=profile.password,
         port=tcp_port,
         scrapli_loglevel=scrapli_loglevel)
 

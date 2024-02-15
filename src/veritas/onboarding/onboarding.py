@@ -22,10 +22,12 @@ from veritas.onboarding.tags import get_tag_properties as _get_tag_properties
 class Onboarding():
 
     def __init__(self, sot=None, onboarding_config=None, 
-                 username=None, password=None, tcp_port=22):
+                 profile=None, tcp_port=22):
 
         self._sot = sot
         self._onboarding_config = onboarding_config
+        self._profile = profile
+        self._tcp_port = tcp_port
 
         self._all_defaults = None
         self._configparser = None
@@ -33,9 +35,6 @@ class Onboarding():
         self._device_facts = None
         self._device_defaults = None
         self._device_properties = None
-        self._username = username
-        self._password = password
-        self._tcp_port = tcp_port
 
         # load plugins
         logger.debug('importing onboarding_plugins')
@@ -365,8 +364,7 @@ class Onboarding():
         return get_caf(
             device_ip, 
             device_defaults, 
-            self._username, 
-            self._password, 
+            self._profile, 
             self._tcp_port, 
             scrapli_loglevel='none')
 
