@@ -16,6 +16,7 @@ def get_device_config_and_facts(device_ip, device_defaults, profile, tcp_port=22
         manufacturer=device_defaults.get('manufacturer','cisco'),
         username=profile.username,
         password=profile.password,
+        ssh_keyfile=profile.ssh_keyfile,
         port=tcp_port,
         scrapli_loglevel=scrapli_loglevel)
 

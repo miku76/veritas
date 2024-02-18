@@ -37,7 +37,7 @@ class Onboarding():
         self._device_properties = None
 
         # load plugins
-        logger.debug('importing onboarding_plugins')
+        logger.debug('importing standard onboarding_plugins')
         importlib.import_module('veritas.configparser.cisco_configparser')
         self._load_module('config_and_facts', 'onboarding_plugins', 'ios_config_and_facts')
         self._load_module('device_properties', 'onboarding_plugins', 'ios_device_properties')
@@ -340,11 +340,12 @@ class Onboarding():
 
         return device_config, device_facts
 
-    def get_device_config_and_facts(self, 
-                                    device_ip, 
-                                    device_defaults, 
-                                    import_config=False,
-                                    import_filename=None):
+    def get_device_config_and_facts(
+            self, 
+            device_ip, 
+            device_defaults, 
+            import_config=False,
+            import_filename=None):
         """get config and facts from the device or import it from disk"""
 
         if import_config:
