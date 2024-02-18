@@ -5,7 +5,10 @@ from loguru import logger
 from scrapli import Scrapli
 from scrapli_cfg import ScrapliCfg
 from ntc_templates.parse import parse_output
-from ..tools import tools
+
+# veritas
+from veritas.tools import tools
+from veritas.devicemanagement import abstract_devicemanagement
 
 
 def get_loglevel(level):
@@ -23,19 +26,20 @@ def get_loglevel(level):
         return logging.NOTSET
 
 
-class Devicemanagement:
+class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
 
-    def __init__(self, **kwargs):
+    def __init__(self, ip, username, password, platform='ios', ssh_keyfile=None, port=22, manufacturer='cisco', scrapli_loglevel='none'):
         self._connection = None
-        self._ip_address = kwargs.get('ip')
-        self._platform = kwargs.get('platform', 'ios')
-        self._username = kwargs.get('username')
-        self._password = kwargs.get('password')
-        self._port = kwargs.get('port', 22)
-        self._manufacturer = kwargs.get('manufacturer', 'cisco')
+        self._ip_address = ip
+        self._platform = platform
+        self._username = username
+        self._password = password
+        self._ssh_keyfile = ssh_keyfile
+        self._port = port
+        self._manufacturer = manufacturer
 
-        if 'scrapli_loglevel' in kwargs:
-            logging.getLogger('scrapli').setLevel(get_loglevel(kwargs['scrapli_loglevel']))
+        if scrapli_loglevel.lower() != 'none':
+            logging.getLogger('scrapli').setLevel(scrapli_loglevel)
             logging.getLogger('scrapli').propagate = True
         else:
             logging.getLogger('scrapli').setLevel(logging.ERROR)
@@ -69,8 +73,8 @@ class Devicemanagement:
             "ssh_config_file": True
         }
 
-        # fow later use
-        # "auth_private_key": f"{SSH_KEYS_EXAMPLE_DIR}/scrapli_key",
+        if self._ssh_key:
+            device["auth_private_key"] = self._ssh_keyfile
 
         self._connection = Scrapli(**device)
         logger.debug("opening connection to device (%s)" % self._ip_address)

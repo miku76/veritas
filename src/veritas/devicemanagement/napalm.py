@@ -1,12 +1,16 @@
 from loguru import logger
 from ntc_templates.parse import parse_output
+from napalm.base.exceptions import ConnectionException, SSHException
 import napalm
 import importlib
 import os
-from importlib import resources
-from ..tools import tools
 
-class Devicemanagement:
+# veritas
+from veritas.tools import tools
+from veritas.devicemanagement import abstract_devicemanagement
+
+
+class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
 
     def __init__(self, **kwargs):
         self._connection = None
@@ -14,6 +18,7 @@ class Devicemanagement:
         self._platform = kwargs.get('platform', 'ios')
         self._username = kwargs.get('username')
         self._password = kwargs.get('password')
+        self._ssh_keyfile = kwargs.get('ssh_keyfile')
         self._port = kwargs.get('port', 22)
         self._manufacturer = kwargs.get('manufacturer', 'cisco')
         self._timeout = kwargs.get('timeout', 60)
@@ -35,7 +40,7 @@ class Devicemanagement:
         logger.debug(f'opening connection to {self._ip_address}')
         try:
             self._connection.open()
-            logger.debug(f'connection established')
+            logger.debug('connection established')
         except (SSHException, ConnectionException) as e:
             logger.error(f'Failed to connect to {self._ip_address} due to {type(e).__name__}')
     
@@ -56,7 +61,7 @@ class Devicemanagement:
         if not self._connection:
                 if not self.open():
                     return None
-        response = self._connection.cli(f'terminal length 0')
+        response = self._connection.cli('terminal length 0')
         return response.result
 
     def get_config(self, configtype='running'):
@@ -211,7 +216,7 @@ class Devicemanagement:
         if not self._connection:
             if not self.open():
                 return None
-        logger.debug(f'discarding config')
+        logger.debug('discarding config')
         return self._connection.discard_config()
 
     def commit_config(self, config=None, revert_in=None):
@@ -222,7 +227,7 @@ class Devicemanagement:
             logger.debug(f'commit config revert_in={revert_in}')
             return self._connection.commit_config(revert_in=revert_in)
         else:
-            logger.debug(f'commit config')
+            logger.debug('commit config')
             return self._connection.commit_config()
 
     def diff_config(self, config=None):
@@ -241,6 +246,6 @@ class Devicemanagement:
         if not self._connection:
             if not self.open():
                 return None
-        logger.debug(f'rollback config')
+        logger.debug('rollback config')
         return self._connection.rollback()
     
