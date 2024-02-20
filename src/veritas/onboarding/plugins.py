@@ -17,6 +17,7 @@ class Plugin(object):
             cls._business_logic_device = {}
             cls._business_logic_interface = {}
             cls._business_logic_config_context = {}
+            cls._offline_importer = None
         return cls._instance
 
     def get_configparser(self, platform):
@@ -42,6 +43,9 @@ class Plugin(object):
 
     def get_business_logic_config_context(self, platform):
         return self._business_logic_config_context.get(platform)
+
+    def get_offline_importer(self):
+        return self._offline_importer
 
     def register_configparser(self, platform, method):
         self._configparser[platform] = method
@@ -74,6 +78,10 @@ class Plugin(object):
     def register_business_logic_config_context(self, platform, method):
         self._business_logic_config_context[platform] = method
         logger.bind(extra='plugins').debug(f'successfully registered business logic (config context) for platform {platform}')
+
+    def register_offline_importer(self, method):
+        self._offline_importer = method
+        logger.bind(extra='plugins').debug('successfully registered offline importer')
 
 def configparser(platform):
     def decorator(func):
@@ -138,3 +146,8 @@ def config_context_business_logic(platform):
         # return fn unmodified
         return func
     return decorator
+
+def offline_importer(func):
+    plugin = Plugin()
+    plugin.register_offline_importer(func)
+    return func
