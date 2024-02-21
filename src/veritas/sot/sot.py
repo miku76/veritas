@@ -162,16 +162,14 @@ class Sot:
         """
         return dvc.Device(self, device)
 
-    def select(self, *unnamed, **named) -> selection:
+    def select(self, selected_values) -> selection:
         """returns initialized selection object to access nautobot
 
         Parameters
         ----------
         *unnamed
             unnamed parameter that are passed to the rest object
-        **named
-            named parameter that are passed to the rest object
-       
+
         Returns
         -------
         selection
@@ -182,7 +180,7 @@ class Sot:
         devices = sot.select('id').using('nb.devices').where('name=lab.local')
 
         """
-        return selection.Selection(self, *unnamed, **named)
+        return selection.Selection(self, selected_values)
 
     def rest(self, *unnamed, **named) -> rest:
         """returns initialized rest object to make REST api calls (requests)

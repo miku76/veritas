@@ -11,7 +11,7 @@ from openpyxl import load_workbook
 # veritas
 import veritas.auth
 
-def get_miniapp_config(appname:str, app_path:str, config_file:str=None, subdir:str="miniapps"):
+def get_miniapp_config(appname:str, app_path:str, config_file:str=None, subdir:str="miniapps") -> dict | None:
     """return config of miniapp
 
     Priority:
@@ -68,7 +68,7 @@ def get_miniapp_config(appname:str, app_path:str, config_file:str=None, subdir:s
         logger.error(f'could not read or parse config; got exception {exc}')
         return None
 
-def get_value_from_dict(dictionary:dict, keys:list):
+def get_value_from_dict(dictionary:dict, keys:list) -> tuple[list|str|dict|int] | None:
     """get value from dict
 
     Parameters
@@ -100,7 +100,7 @@ def get_value_from_dict(dictionary:dict, keys:list):
 
     return nested_dict
 
-def get_value_from_dict_and_list(dictionary:dict, keys:list):
+def get_value_from_dict_and_list(dictionary:dict, keys:list) -> tuple[list|str|dict|int] | None:
     """get value from dict and list (the list can be a value of dict)
 
     Parameters
@@ -145,7 +145,44 @@ def get_value_from_dict_and_list(dictionary:dict, keys:list):
 
     return nested_dict
 
-def convert_arguments_to_properties(*unnamed, **named):
+def remove_key_from_dict(dictionary:dict, key:str, key_in_str:bool=False) -> dict:
+    """remove key from dict
+
+    Parameters
+    ----------
+    dictionary : dict
+        the source dict
+    key : str
+        name of key to remove
+    key_in_str : bool, optional
+        if True, the key is in a string, by default False
+
+    Returns
+    -------
+    value
+        the value (can be list, dict, str, int ....)
+    """
+    if dictionary is None:
+        return None
+
+    if isinstance(dictionary, list):
+        for i in dictionary:
+            remove_key_from_dict(i, key, key_in_str)
+    else:
+        for k, v in dict(dictionary).items():
+            if isinstance(v, dict):
+                remove_key_from_dict(v, key, key_in_str)
+            elif isinstance(v, list):
+                for i in v:
+                    remove_key_from_dict(i, key, key_in_str)
+            else:
+                if key_in_str and key in k:
+                    del dictionary[k]
+                else:
+                    if k == key:
+                        del dictionary[k]
+
+def convert_arguments_to_properties(*unnamed, **named) -> dict | str | list:
     """convert named and unnamed arguments to a single dict
 
     Returns
@@ -183,7 +220,7 @@ def convert_arguments_to_properties(*unnamed, **named):
     return properties
 
 def get_username_and_password(profile_config:dict, profile_name:str=None, 
-                              cfg_username:str=None, cfg_password:str=None) -> list:
+                              cfg_username:str=None, cfg_password:str=None) -> tuple[str, str]:
     """return username and password
 
     Parameters

@@ -2,23 +2,30 @@ from loguru import logger
 from anytree import AnyNode, PostOrderIter, search
 from boolean_parser import parse as boolean_parser
 from boolean_parser.actions.boolean import BoolAnd, BoolOr
+from benedict import benedict
 
 # veritas
 from veritas.tools import tools
 from veritas.sot import sot
+from veritas.sot import queries
 
 
 class Selection(object):
     """class to select data from nautobot
 
-    This class is used to query nautobot. The syntax is comparable to SQL, where you have a SELECT a FROM and a WHERE clause.
+    This class is used to query nautobot. The syntax is comparable to SQL, where you have the three components:
+    
+        - SELECT
+        - FROM
+        - WHERE
+
     In addition, graphql queries can also be made with this class.
 
     Parameters
     ----------
     sot : sot
         the sot object
-    values : string or list of strings
+    values : string | list
         the values to select
 
     Examples
@@ -40,7 +47,7 @@ class Selection(object):
     # and then get return the cahced values
     query_cache = {}
 
-    def __init__(self, sot:sot, *values) -> None:
+    def __init__(self, sot:sot, select:tuple[list|str]) -> None:
         self._sot = sot
         self._using = set()
 
@@ -60,17 +67,22 @@ class Selection(object):
         # we have two modes sql and gql
         self._mode = "sql"
 
-        # set values
-        if len(values) > 1:
-            self._select = []
-            for v in values:
-                self._select.append(v)
-        else:
-            for v in values:
-                if isinstance(v, str):
-                    self._select = v.replace(' ','').split(',')
-                elif isinstance(v, list):
-                    self._select = v
+        # set selected values
+        logger.debug(f'type of select: {type(select)}')
+        if isinstance(select, str):
+            self._select = select.replace(' ','').split(',')
+        elif isinstance(select, list):
+            self._select = select
+        # if len(select) > 1:
+        #     self._select = []
+        #     for v in select:
+        #         self._select.append(v)
+        # else:
+        #     for v in select:
+        #         if isinstance(v, str):
+        #             self._select = v.replace(' ','').split(',')
+        #         elif isinstance(v, list):
+        #             self._select = v
 
     def using(self, schema:str) -> None:
         """configures which data source to use
@@ -97,12 +109,15 @@ class Selection(object):
             self._using = schema = s[0]
             self._left_table = self._using
             self._left_identifier = s[1]
+            logger.bind(extra="using").debug(f'using: {self._using} as {self._left_identifier}')
         else:
             self._using = self._left_table = self._left_identifier = schema
         return self
 
     def join(self, schema:str) -> None:
         """join two schemas
+
+        See the 'where' method for an example.
 
         Parameters
         ----------
@@ -123,6 +138,7 @@ class Selection(object):
             self._join = schema = s[0]
             self._right_table = self._join
             self._right_identifier = s[1]
+            logger.bind(extra="join").debug(f'join: {self._join} as {self._right_identifier}')
         else:
             self._join = self._right_table = self._right_identifier = schema
 
@@ -130,6 +146,8 @@ class Selection(object):
 
     def on(self, column:str) -> None:
         """on
+
+        See the 'where' method for an example
 
         Parameters
         ----------
@@ -146,6 +164,7 @@ class Selection(object):
         - We implement a fluent syntax. This methods returns self
         """        
         self._on = column
+        logger.bind(extra="on").debug(f'on: {self._on}')
         return self
 
     def mode(self, mode:str) -> None:
@@ -192,7 +211,7 @@ class Selection(object):
         self._reformat = reformat
         return self
 
-    def where(self, *unnamed, **named):
+    def where(self, *unnamed, **named) -> dict:
         """where
 
         Parameters
@@ -223,6 +242,16 @@ class Selection(object):
 
         # is it a join operation
         if self._join:
+            """
+            You can join two tables as follows:
+
+            vlans = my_sot.select('vlans.vid, vlans.name, vlans.interfaces_as_tagged, devices.name, devices.platform') \
+                            .using('nb.vlans as vlans') \
+                            .join('nb.devices as devices') \
+                            .on('vlans.interfaces_as_tagged[0].device.id = devices.id') \
+                            .where('vlans.vid=100')
+
+            """
             left_select = set()
             right_select = set('')
 
@@ -234,17 +263,21 @@ class Selection(object):
             join_on = self._on.replace(' ','').split('=')
             join_left_row = join_on[0].replace(f'{self._left_identifier}.','',1)
             join_right_row = join_on[1].replace(f'{self._right_identifier}.','',1)
+
             # add fields we are joining on
             # maybe th user wants a subfield; check if . found and use left part
             left_select.add(join_left_row.split('.')[0])
             right_select.add(join_right_row.split('.')[0])
+            logger.bind(extra="where").debug(f'join detected; left: {self._left_table} as {self._left_identifier}' \
+                f' right: {self._right_table} as {self._right_identifier} using: {self._using}')
 
             # prepare left select statement
             left_select.add('id')
             for c in self._select:
                 if c.startswith(self._left_identifier):
                     left_select.add(c.replace(f'{self._left_identifier}.',''))
-            # does the same with the right one
+
+            # now we prpare the right one
             right_select.add('id')
             for c in self._select:
                 if c.startswith(self._right_identifier):
@@ -260,14 +293,32 @@ class Selection(object):
                 if w.startswith(self._right_identifier):
                     where_right.append(w.replace(f'{self._right_identifier}.','',1))
 
-            logger.debug(f'join detected; left: {self._left_table}/{self._left_identifier}' \
-                f' right: {self._right_table}/{self._right_identifier} using: {self._using}')
-            logger.debug(f'left_select: {left_select} left_where: {where_left}' \
-                f' right_select: {right_select} right_where: {where_right}')
+            logger.bind(extra="where").debug(f'left: {where_left} right: {where_right} ' \
+                    f'left_select: {left_select} right_select: {right_select}')
 
-            left_result = self._parse_query(where_left, list(left_select), self._left_table)
-            right_result = self._parse_query(where_right, list(right_select), self._right_table)
-            return self._join_results(left_result, right_result, self._on)
+            # we need the raw values from the result and not 'reformatted' ones
+            # save self._reformat and set it to None
+            reformat = self._reformat
+            self._reformat = None
+
+            # now get the values of the two tables
+            left_result = self._parse_sql_query(where_left, list(left_select), self._left_table)
+            right_result = self._parse_sql_query(where_right, list(right_select), self._right_table)
+
+            # last but not least join the two tables
+            self._reformat = reformat
+            joined_result = self._join_results(left_result, right_result, self._on, left_select, right_select)
+            if 'values_only' in self._reformat:
+                logger.bind(extra="where").debug('returning only values')
+                return queries._values_only(joined_result, left_select, right_select)
+            if 'remove_id' in self._reformat:
+                logger.bind(extra="where").debug('removing id from result')
+                tools.remove_key_from_dict(joined_result, 'id', False)
+            if 'devices_as_pandas' in self._reformat:
+                logger.bind(extra="where").debug('returning result as pandas')
+                return queries._devices_to_pandas(self, joined_result)
+            else:
+                return joined_result
         else:
             if self._mode == "sql":
                 return self._parse_sql_query(properties, self._select, self._using)
@@ -276,8 +327,10 @@ class Selection(object):
 
     # private methods
 
-    # GQL mode 
-    def _parse_gql_query(self, expression, select, using):
+    # GQL mode
+    # Querying using the GQL mode is simple. We just have to parse the expression and query the data
+
+    def _parse_gql_query(self, expression:str, select:list, using:str) -> dict:
         """parse GraphQL mode query"""
         return self._sot.get.query(
             select=select, 
@@ -287,9 +340,29 @@ class Selection(object):
             reformat=self._reformat)
 
     # SQL mode below
+    # Querying using the SQL mode is complex. We have to parse the expression and build a logical tree
+    # then we merge the values of the leafs (if possible) and query the tree
+    # Finally, we merge all the individual queries.
 
-    def _parse_sql_query(self, expression, select, using):
+    def _parse_sql_query(self, expression:str, select:list, using:str) -> dict:
+        """parse query and return result as dict
+
+        Parameters
+        ----------
+        expression : str
+            boolean expression as string
+        select : list
+            value to get from the query
+        using : str
+            name of table to use
+
+        Returns
+        -------
+        dict
+            result of the query
+        """        
         logger.bind(extra="parse").debug(f'expression {expression}')
+
         # lets check if we have a logical operation
         found_logical_expression = False
         try:
@@ -303,6 +376,8 @@ class Selection(object):
             logger.bind(extra="parse").debug(f'no logical operation found ... simple expression {expression}')
 
         if found_logical_expression:
+            # first we have to build a logical tree. This is a tree of the logical expression
+            # Then we condense this tree and query it
             self._node_id = 0
             logger.bind(extra="parse").debug('building logical tree')
             logical_tree = self._build_logical_tree(res)
@@ -319,7 +394,7 @@ class Selection(object):
         
         return response
 
-    def _simple_sql_query(self, select, using, expression):
+    def _simple_sql_query(self, select:list, using:str, expression: tuple[list|dict|str]) -> dict:
         """return data of simple SQL queries
            This is a query that runs independently, so no additional data is required.
         """
@@ -364,7 +439,7 @@ class Selection(object):
             mode='sql', 
             reformat=self._reformat)
 
-    def _build_logical_tree(self, res):
+    def _build_logical_tree(self, res: dict) -> AnyNode:
         """parse logical expression and build tree"""
 
         id = -1
@@ -397,7 +472,7 @@ class Selection(object):
                 logger.bind(extra="build tree").trace(f'convert expression... node.values={node.values}')
         return root
 
-    def _convert_expression(self, expression):
+    def _convert_expression(self, expression:dict) -> dict:
         """convert boolean parse condition to dict"""
         field = expression.get('parameter')
         operator = expression.get('operator')
@@ -410,7 +485,7 @@ class Selection(object):
             # equals
             return {field: [value]}
 
-    def _condense_tree(self, root):
+    def _condense_tree(self, root: AnyNode) -> None:
         """condense tree - single run"""
 
         # we need the custom field types
@@ -420,45 +495,77 @@ class Selection(object):
 
         run = 1
         logger.bind(extra="condense").debug(f'condense run {run}')
-        while self._condense_single_run(root):
+        while self._merge_query_values(root):
             run += 1
             logger.bind(extra="condense").debug(f'condense run {run}')
 
-    def _refresh_cf_types(self):
+    def _refresh_cf_types(self) -> None:
+        # refresh custom field types       
         nb = self._sot.open_nautobot()
         self._cf_types = {}
         for t in nb.extras.custom_fields.all():
             self._cf_types[t.display] = {'type': str(t.type)}
 
-    def _condense_single_run(self, root):
+    def _merge_query_values(self, root: AnyNode) -> bool:
+        """merge query values
+
+        Sometime we have a logical expression like 'name=lab-01.local or name=lab-02.local'
+        Such a query can be merged to 'name=['lab-01.local', 'lab-02.local']'
+
+        Parameters
+        ----------
+        root : AnyNode
+            the logical tree
+
+        Returns
+        -------
+        something_condensed : bool
+            some values were merged together
+
+        Raises
+        ------
+        KeyError
+            if a key is unknown eg. an unknown custom field
+        """
         nodes = search.findall(root, filter_=lambda node: node.values is None)
         something_condensed = False
+
+        # we only merge nodes that are leafs
+
         for node in nodes:
             if node.operator == 'or':
                 if all(c.is_leaf for c in node.children):
-                    logger.bind(extra="condense sr").debug(f'id: {node.id} operator "or" and all childrens are leafs')
+                    logger.bind(extra="merge values").debug(f'id: {node.id} operator "or" and all childrens are leafs')
                     merged = {}
                     cf_type_supported = True
                     for c in node.children:
                         for key, value in c.values.items():
                             if key.startswith('cf_'):
                                 key_withhout_cf = key.replace('cf_','')
+                                # keys can have some modifiers like cf_net__ie
+                                # we have to replace this modifier
+                                key_withhout_cf = key_withhout_cf.split('__')[0]
                                 # check if cf_type supports merging
+                                # [String] is supported / string is not
                                 if key_withhout_cf not in self._cf_types:
-                                    logger.error(f'unknown key {key}; aborting')
+                                    logger.bind(extra="merge values").error(f'unknown key {key}; aborting')
                                     raise KeyError(f'unknown key {key}')
                                 if self._cf_types.get(key_withhout_cf).get('type','') == 'Text':
                                     cf_type_supported = False
                         if c.values:
                              merged = self._merge_dicts(merged, c.values)
                     if len(merged) == 1 and cf_type_supported:
-                        logger.bind(extra="condense sr").debug(f'leafs can be merged to {merged}')
+                        logger.bind(extra="merge values").debug(f'leafs can be merged to {merged}')
                         node.values = self._merge_dicts(node.values, merged) if node.values else merged
                         node.children = []
                         something_condensed = True
+                    else:
+                        logger.bind(extra="merge values").debug(f'leafs cannot be merged merged={merged} ' \
+                                f' cf_type_supported={cf_type_supported}' \
+                                f' len(merged)={len(merged)}')
             elif node.operator == 'and':
                 if all(c.is_leaf for c in node.children):
-                    logger.bind(extra="condense sr").debug(f'id: {node.id} operator "and" and all childrens are leafs')
+                    logger.bind(extra="merge values").debug(f'id: {node.id} operator "and" and all childrens are leafs')
                     merged = {}
                     for c in node.children:
                         merged = self._merge_dicts(merged, c.values) if c.values else merged
@@ -469,12 +576,26 @@ class Selection(object):
 
         return something_condensed
 
-    def _merge_dicts(self, dict1, dict2):
+    def _merge_dicts(self, dict1: dict, dict2: dict) -> dict:
+        """merge two dicts together
+
+        Parameters
+        ----------
+        dict1 : dict
+            first dict
+        dict2 : dict
+            second dict
+
+        Returns
+        -------
+        dict
+            merged dict
+        """
         keys = set(dict1).union(dict2)
         no = []
         return dict((k, dict1.get(k, no) + dict2.get(k, no)) for k in keys)
 
-    def _query_logical_tree(self, logical_tree, select, using):
+    def _query_logical_tree(self, logical_tree:AnyNode, select:list, using: str) -> None:
         """query each leaf and merge data (depending on or and and)"""
         if 'id' not in select:
             select += ['id']
@@ -498,6 +619,7 @@ class Selection(object):
                                                     where=values,
                                                     mode='sql',
                                                     reformat=self._reformat)
+                logger.bind(extra="query lt").trace(f'node.response={node.response}')
             else:
                 # have a look at the children and do the logical operation
                 if node.operator == 'or':
@@ -513,7 +635,7 @@ class Selection(object):
                         lists.append(c.response)
                     node.response = self._get_items_with_equal_id(lists)
 
-    def _get_items_with_equal_id(self, all_items):
+    def _get_items_with_equal_id(self, all_items:list) -> list:
         """returns a list of items with equal id"""
 
         # 1. case: we have only one sublist; return result
@@ -534,7 +656,7 @@ class Selection(object):
                     result.append(o)
         return result
     
-    def _get_items(self, all_items):
+    def _get_items(self, all_items:list) -> list:
         """returns all values without duplicates"""
 
          # 1. case: we have only one sublist; return result
@@ -557,51 +679,33 @@ class Selection(object):
         
         return result
 
-    def _join_results(self, left, right, join_on):
+    def _join_results(self, left:dict, right:dict, join_on:str, left_select:str, right_select:str) -> list:
         """join left and right table"""
         join_on_list = self._on.replace(' ','').split('=')
         left_id = join_on_list[0].replace(f'{self._left_identifier}.','',1)
         right_id = join_on_list[1].replace(f'{self._right_identifier}.','',1)
-        logger.debug(f'join tables on left: {left_id} right: {right_id}')
+
+        logger.bind(extra="join result").debug(f'join tables on left: {left_id} right: {right_id}')
+        logger.bind(extra="join result").debug(f'left_select: {left_select}')
+        logger.bind(extra="join result").debug(f'right_select: {right_select}')
 
         # print(json.dumps(left, indent=4))
         # print()
         # print(json.dumps(right, indent=4))
         # print('-----')
         result = []
-        for x in left:
-            value = self._get_value_from_dict(x, left_id.split('.'))
-            if value:
-                # check if value exists in right table
-                for r in right:
-                    r_val = self._get_value_from_dict(r, right_id.split('.'))
-                    if r_val == value:
-                        x.update(r)
-                        result.append(x)
-        return result
+        for left_data in left:
+            l_values = benedict(left_data, keyattr_dynamic=True)
+            for right_data in right:
+                r_values = benedict(right_data, keyattr_dynamic=True)
+                try:
+                    left_value = l_values[left_id]
+                    right_value = r_values[right_id]
+                except KeyError:
+                    continue
+                if left_value == right_value:
+                    new_right = {self._right_identifier: r_values}
+                    l_values.update(new_right)
+                    result.append(dict(l_values))
     
-    def _get_value_from_dict(self, dictionary, keys):
-        if dictionary is None:
-            return None
-
-        nested_dict = dictionary
-
-        for key in keys:
-            try:
-                nested_dict = nested_dict[key]
-            except KeyError:
-                return None
-            except IndexError:
-                return None
-            except TypeError:
-                # check if nested_dict is a list
-                if isinstance(nested_dict, list):
-                    # check if next key is in any list
-                    for x in nested_dict:
-                        if key in x:
-                            return x[key]
-                    return None
-                else:
-                    return nested_dict
-
-        return nested_dict
+        return result
