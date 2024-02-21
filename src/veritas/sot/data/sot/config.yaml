@@ -261,7 +261,8 @@ queries:
       $get_device_type: Boolean = false,
       $get_face: Boolean = false,
       $get_hostname: Boolean = true, 
-      $get_id: Boolean = false, 
+      $get_id: Boolean = false,
+      $get_device_id: Boolean = false, 
       $get_interfaces: Boolean = false,
       $get_local_config_context_data: Boolean = false,
       $get_location: Boolean = false, 
@@ -283,6 +284,7 @@ queries:
       devices(__devices_params__) 
       {
         id @include(if: $get_id)
+        id @include(if: $get_device_id)
         name @include(if: $get_name)
         hostname: name @include(if: $get_hostname)
         asset_tag @include(if: $get_asset_tag)
@@ -807,52 +809,103 @@ queries:
 
   nb.vlans: >
     query Vlans(
-        $get_id: Boolean = false,
-        $get_vid: Boolean = false, 
-        $get_name: Boolean = false, 
-        $get_status: Boolean = false,
-        $get_role: Boolean = false,
         $get_description: Boolean = false,
+        $get_id: Boolean = false,
+        $get_interfaces_as_tagged: Boolean = false,
+        $get_interfaces_as_untagged: Boolean = false,
         $get_location: Boolean = false,
-        $get_vlan_group: Boolean = false,
+        $get_name: Boolean = false, 
+        $get_role: Boolean = false,
+        $get_status: Boolean = false,
         $get_tenant: Boolean = false,
         $get_tags: Boolean = false,
+        $get_vid: Boolean = false, 
+        $get_vlan_group: Boolean = false,
+        $get_vminterfaces_as_tagged: Boolean = false,
+        $get_vminterfaces_as_untagged: Boolean = false,
         __query_vars__
-      ) {
-      vlans(__vlans_params__) {
-        id @include(if: $get_id)
-        vid @include(if: $get_vid)
-        name @include(if: $get_name)
-        status @include(if: $get_status) {
-          name
-        }
-        role @include(if: $get_role) {name}
-        description @include(if: $get_description)
-        location @include(if: $get_location) {
-          name
+      ) 
+      {
+        vlans(__vlans_params__) 
+        {
           id @include(if: $get_id)
-          location_type {
-            id @include(if: $get_id)
+          vid @include(if: $get_vid)
+          name @include(if: $get_name)
+          status @include(if: $get_status) 
+          {
             name
           }
-        }
-        vlan_group @include(if: $get_vlan_group) {name}
-        tenant @include(if: $get_tenant) {
+          role @include(if: $get_role) {name}
+          description @include(if: $get_description)
+          location @include(if: $get_location) 
+          {
             name
-            tenant_group {
+            id @include(if: $get_id)
+            location_type {
+              id @include(if: $get_id)
               name
             }
-        }
-        tags @include(if: $get_tags) {
-          name
-          content_types {
-            id
-            app_label
-            model
+          }
+          vlan_group @include(if: $get_vlan_group) {name}
+          tenant @include(if: $get_tenant) 
+          {
+              name
+              tenant_group 
+              {
+                name
+              }
+          }
+          tags @include(if: $get_tags) 
+          {
+            name
+            content_types 
+            {
+              id @include(if: $get_id)
+              app_label
+              model
+            }
+          }
+          interfaces_as_tagged @include(if: $get_interfaces_as_tagged) 
+          {
+            id @include(if: $get_id)
+            device 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            name
+          }
+          interfaces_as_untagged @include(if: $get_interfaces_as_untagged) 
+          {
+            id @include(if: $get_id)
+            device {
+              id @include(if: $get_id)
+              name
+            }
+            name
+          }
+          vminterfaces_as_tagged @include(if: $get_vminterfaces_as_tagged)
+          {
+            id @include(if: $get_id)
+            virtual_machine 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            name
+          }
+          vminterfaces_as_untagged @include(if: $get_vminterfaces_as_untagged)
+          {
+            id @include(if: $get_id)
+            virtual_machine 
+            {
+              id @include(if: $get_id)
+              name
+            }
+            name
           }
         }
       }
-    }
 
   nb.general: >
     query General(
