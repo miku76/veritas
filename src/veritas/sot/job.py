@@ -15,24 +15,45 @@ from nornir_scrapli.tasks import (
 
 
 class Job(object):
+    """This class starts a job on the network. It uses nornir to run tasks on the network devices.
 
-    def __init__(self, sot, *unnamed, **named):
-        properties = tools.convert_arguments_to_properties(unnamed, named)
+    Parameters
+    ----------
+    result : str
+       format of the result
+    username : str
+         username for the devices
+    password : str
+        password for the devices
+    port : int
+        port to connect to
+    data : dict
+        data to be added to the inventory
+    use_primary : bool
+        use primary ip address
+    logging : dict
+        logging settings
+    """
+    def __init__(self, sot, result:str='raw', username:str=None, password:str=None, port:int=22, data:dict={}, 
+                 use_primary:bool=True, logging:dict={"enabled": False}):
+        
+        # we use the veritas inventory plugin
         InventoryPluginRegister.register("veritas-inventory", veritasInventory.VeritasInventory)
 
         self._sot = sot
         self._nornir = None
         self._nautobot = None
-        self.__on = None
-        self.__host_groups = []
-        self.__groups = {}
-        self.__result = properties.get('result','raw')
-        self.__username = properties.get('username')
-        self.__password = properties.get('password')
-        self.__port = properties.get('port',22)
-        self.__data = properties.get('data',{})
-        self.__user_primary = properties.get('use_primary', True)
-        self.__logging = properties.get('logging',{"enabled": False})
+        self._on = None
+        self._profile = None
+        self._host_groups = []
+        self._groups = {}
+        self._result = result
+        self._username = username
+        self._password = password
+        self._port = port
+        self._data = data
+        self._user_primary = use_primary
+        self._logging = logging
 
     def init_nornir(self, *unnamed, **named):
         # returns the nornir object so that the user can 
@@ -51,38 +72,42 @@ class Job(object):
             raise AttributeError ('unknown attribute')
 
     def on(self, *unnamed, **named):
-        self.__on = tools.convert_arguments_to_properties(unnamed, named)
+        self._on = tools.convert_arguments_to_properties(unnamed, named)
         return self
 
     def set(self, *unnamed, **named):
         properties = tools.convert_arguments_to_properties(unnamed, named)
 
-        self.__username = properties.get('username')
-        self.__password = properties.get('password')
-        self.__result = properties.get('result', self.__result)
-        self.__parse_result = properties.get('parse', False)
-        self.__port = properties.get('port', self.__port)
-        self.__cfg_plain_text = properties.get('plaintext', True)
-        self.__user_primary = properties.get('use_primary', self.__user_primary)
-        self.__logging = properties.get('logger', self.__logging)
+        self._profile = properties.get('profile')
+        if self._profile:
+            self._username = self._profile.username
+            self._password = self._profile.password
+        self._username = properties.get('username') if properties.get('username') else self._username
+        self._password = properties.get('password') if properties.get('password') else self._password
+        self._result = properties.get('result', self._result)
+        self._parse_result = properties.get('parse', False)
+        self._port = properties.get('port', self._port)
+        self._cfg_plain_text = properties.get('plaintext', True)
+        self._user_primary = properties.get('use_primary', self._user_primary)
+        self._logging = properties.get('logger', self._logging)
         return self
 
     def add_data(self, *unnamed, **named):
         # we expect a list and add this list to our inventory data later
         properties = tools.convert_arguments_to_properties(unnamed, named)
-        self.__data = [properties] if isinstance(properties, str) else properties
+        self._data = [properties] if isinstance(properties, str) else properties
         return self
 
     def add_group(self, *unnamed, **named):
         # we expect a dict
         properties = tools.convert_arguments_to_properties(unnamed, named)
-        self.__groups = properties
+        self._groups = properties
         return self
 
     def add_to_group(self, *unnamed, **named):
         # we expect a list
         properties = tools.convert_arguments_to_properties(unnamed, named)
-        self.__host_groups = [properties] if isinstance(properties, str) else properties
+        self._host_groups = [properties] if isinstance(properties, str) else properties
         return self
 
     def ping(self,  *unnamed, **named):
@@ -141,17 +166,16 @@ class Job(object):
 
     # -------- internal methods --------
 
-    def _init_nornir(self, *unnamed, **named):
+    def _init_nornir(self, data=None, host_groups=None, groups=None, logger=None, num_workers=100):
 
         if self._nornir is not None:
             return 
 
-        properties = tools.convert_arguments_to_properties(unnamed, named)
-        _data = properties.get('data', self.__data)
-        _host_groups = properties.get('data', self.__host_groups)
-        _groups = properties.get('groups', self.__groups)
-        _logger = properties.get('logger', self.__logging)
-        _worker = properties.get('num_workers', 100)
+        _data = data if data else self._data
+        _host_groups = host_groups if host_groups else self._host_groups
+        _groups = groups if groups else self._groups
+        _logger = logger if logger else self._logging
+        _worker = num_workers
 
         self._nornir = InitNornir(
             runner={
@@ -166,20 +190,20 @@ class Job(object):
                     'url': self._sot.nautobot_url,
                     'ssl_verify': self._sot.ssl_verify,
                     'token': self._sot.nautobot_token,
-                    'query': self.__on,
-                    'use_primary_ip': self.__user_primary,
-                    'username': self.__username,
-                    'password': self.__password,
-                    'connection_options': {'default': {'username': self.__username,
-                                                       'password': self.__password,
-                                                       'port': self.__port}
+                    'query': self._on,
+                    'use_primary_ip': self._user_primary,
+                    'username': self._username,
+                    'password': self._password,
+                    'connection_options': {'default': {'username': self._username,
+                                                       'password': self._password,
+                                                       'port': self._port}
                                         },
                     'data': _data,
                     'host_groups': _host_groups,
                     'groups': _groups
                 },
             },
-            logging=self.__logging,
+            logging=self._logging,
         )
 
     def _getter(self, getter):
@@ -217,9 +241,9 @@ class Job(object):
 
     def _return(self, result):
 
-        if self.__parse_result:
+        if self._parse_result:
             return self._parse_result(result)
-        elif 'normalize' == self.__result:
+        elif 'normalize' == self._result:
             return self._normalize_result(result)
         else:
             return result
@@ -243,12 +267,12 @@ class Job(object):
             if command == "get_config":
                 # it is either a startup or a running config
                 if len(result.get('config').get('running')) > 0:
-                    if self.__cfg_plain_text and len(results) == 2:
+                    if self._cfg_plain_text and len(results) == 2:
                         # one host / user wants just the config
                         return result.get('config').get('running')
                     response[hostname][command] = result.get('config').get('running')
                 elif len(result.get('config').get('startup')) > 0:
-                    if self.__cfg_plain_text and len(results) == 2:
+                    if self._cfg_plain_text and len(results) == 2:
                         # one host / user wants just the config
                         return result.get('config').get('startup')
                     response[hostname][command] = result.get('config').get('startup')
