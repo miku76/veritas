@@ -13,7 +13,7 @@ from git import Repo
 class Repository:
     """This class is a wrapper around the gitpython library. It provides a simple interface to interact with a git repository.
 
-    Returns
+    Parameters
     -------
     path : str
        path to the repository
@@ -47,15 +47,15 @@ class Repository:
         if item == 'remotes':
             return self._repo.remotes
 
-    def _open_repository(self):
+    def _open_repository(self) -> None:
         """open the repository"""
         self._repo = Repo(str(self.path))
 
-    def get_repo(self):
+    def get_repo(self) -> Repo:
         """return the repository"""
         return self._repo
 
-    def get_index(self):
+    def get_index(self) -> Repo.index:
         """return the index"""
         return self._repo.index
 
@@ -68,7 +68,7 @@ class Repository:
 
         return config
 
-    def get_info(self):
+    def get_info(self) -> dict:
         """return git information"""
         info = {}
         master = self._repo.head.reference
@@ -82,7 +82,7 @@ class Repository:
 
         return info
 
-    def get_last_commits(self, max_count:int, filename:str):
+    def get_last_commits(self, max_count:int, filename:str) -> list:
         """return last commits for a file"""
         commits_for_file_generator = self._repo.iter_commits(
             all=True, 
@@ -90,7 +90,7 @@ class Repository:
             paths=filename)
         return [c for c in commits_for_file_generator]
 
-    def get_last_commits_of(self, path):
+    def get_last_commits_of(self, path:str) -> list:
         """get last commits of a path"""
         return [commit for commit in self._repo.iter_commits(paths=path)]
 
