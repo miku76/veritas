@@ -11,6 +11,17 @@ from git import Repo
 # git diff HEAD^^
 
 class Repository:
+    """This class is a wrapper around the gitpython library. It provides a simple interface to interact with a git repository.
+
+    Returns
+    -------
+    path : str
+       path to the repository
+    repo : str
+         name of the repository
+    ssh_cmd : str
+        ssh command to use for remote operations
+    """    
 
     def __init__(self, path: str, repo: str, ssh_cmd=None):
             self.path = Path(path).expanduser().resolve()
@@ -21,19 +32,35 @@ class Repository:
             self._open_repository()
 
     def __getattr__(self, item):
+        """getattr is called when an attribute is not found in the usual places 
+
+        Parameters
+        ----------
+        item : str
+            name of the attribute
+
+        Returns
+        -------
+        item
+            the attribute
+        """
         if item == 'remotes':
             return self._repo.remotes
 
     def _open_repository(self):
+        """open the repository"""
         self._repo = Repo(str(self.path))
 
     def get_repo(self):
+        """return the repository"""
         return self._repo
 
     def get_index(self):
+        """return the index"""
         return self._repo.index
 
     def get_config(self):
+        """return git configuration"""
         config = {}
         with self._repo.config_reader() as git_config:
             config['user.email'] = git_config.get_value('user', 'email')
@@ -42,6 +69,7 @@ class Repository:
         return config
 
     def get_info(self):
+        """return git information"""
         info = {}
         master = self._repo.head.reference
         lc = datetime.datetime.fromtimestamp(master.commit.committed_date)
@@ -54,13 +82,16 @@ class Repository:
 
         return info
 
-    def get_last_commits(self, max_count, filename):
-        commits_for_file_generator = self._repo.iter_commits(all=True, 
-                                                             max_count=max_count, 
-                                                             paths=filename)
+    def get_last_commits(self, max_count:int, filename:str):
+        """return last commits for a file"""
+        commits_for_file_generator = self._repo.iter_commits(
+            all=True, 
+            max_count=max_count, 
+            paths=filename)
         return [c for c in commits_for_file_generator]
 
     def get_last_commits_of(self, path):
+        """get last commits of a path"""
         return [commit for commit in self._repo.iter_commits(paths=path)]
 
     def get_revision(self, path):
@@ -70,8 +101,8 @@ class Repository:
             (commit, (commit.tree / path).data_stream.read()) for commit in self._repo.iter_commits(paths=path)
         )
 
-    def get_commits(self):
-
+    def get_commits(self) -> list:
+        """get commits"""
         commits = []
         for commit in pyRepository(str(self.path)).traverse_commits():
 
@@ -117,7 +148,8 @@ class Repository:
             commits.append(record)
         return commits
 
-    def get_commits_details(self, diff=False, diff_parsed=False, source=False, source_before=False):
+    def get_commits_details(self, diff:bool=False, diff_parsed:bool=False, 
+                            source:bool=False, source_before:bool=False) -> list:
         commits = []
 
         for commit in pyRepository(str(self.path)).traverse_commits():
@@ -166,63 +198,78 @@ class Repository:
                 continue 
         return commits
 
-    def set_config(self, key, sub_key, value):
-        # user.name = value
+    def set_config(self, key:str, sub_key:str, value:str) -> None:
+        """set git configuration"""
+        # eg. user.name = value
         with self._repo.config_writer() as config:
             config.set_value(key, sub_key, value)
 
-    def create_remote(self, remote_name, url):
+    def create_remote(self, remote_name:str, url:str) -> None:
+        """create a remote"""
         self._repo.create_remote(remote_name, url)
 
     def has_changes(self):
-        if self._repo.is_dirty(untracked_files=True):
+        """check if there are changes"""
+        if self._repo.is_dirty(untracked_files=True) -> bool:
             logger.debug('Changes detected')
             return True
         return False
 
-    def get_untracked_files(self):
+    def get_untracked_files(self) -> list:
+        """return untracked files"""
         return self._repo.untracked_files
 
-    def get_diff_summary(self, name_only=True):
+    def get_diff_summary(self, name_only:bool=True):
         return self._repo.git.diff('HEAD~1..HEAD', name_only=name_only)
 
     def get_diff(self):
+        """return diff"""
         return self._repo.head.commit
 
-    def add(self, files):
+    def add(self, files:list):
+        """add files to git"""
         return self._repo.index.add(files)
 
     def add_all(self):
+        """add all files to git"""
         return self._repo.git.add(all=True)
 
-    def commit(self, comment=''):
+    def commit(self, comment:str=''):
+        """commit changes"""
         return self._repo.index.commit(comment)
 
     def push(self):
+        """push changes"""
         if self._ssh_cmd:
             with self._repo.git.custom_environment(GIT_SSH_COMMAND=self._ssh_cmd):
                 return self._repo.remotes.origin.push(env={"GIT_SSH_COMMAND": self._ssh_cmd })
         return self._repo.remotes.origin.push()
 
     def pull(self):
+        """pull changes"""
         if self._ssh_cmd:
             with self._repo.git.custom_environment(GIT_SSH_COMMAND=self._ssh_cmd):
                 return self._repo.remotes.origin.pull(env={"GIT_SSH_COMMAND": self._ssh_cmd })
         return self._repo.remotes.origin.pull()
 
-    def commits(self, number_of_commits=5):
+    def commits(self, number_of_commits:int=5) -> list:
+        """return list of commits"""
         return list(self._repo.iter_commits('main'))[:number_of_commits]
 
-    def branch(self):
+    def branch(self) -> str:
+        """return active branch"""
         return self._repo.active_branch.name
 
     def get_branch(self):
+        """return branch"""
         return self._repo.head.reference
 
     def branches(self):
+        """return branches"""
         return self._repo.branches
 
     def get(self, filename):
+        """get file content"""
         # check if path exists
         local_path = Path("%s/%s" % (self.path, filename))
         if local_path.is_file():
@@ -231,7 +278,8 @@ class Repository:
             logger.error(f'file {local_path} does not exists')
             return None
 
-    def write(self, filename, content):
+    def write(self, filename:str, content) -> bool:
+        """write content to file"""
         local_path = Path("%s/%s" % (self.path, filename))
         try:
             with open(local_path, "w") as filehandler:
