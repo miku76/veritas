@@ -23,6 +23,7 @@ class Profile(object):
 
             # decrypt user password
             if self._username and username_token:
+                logger.bind(extra="profile").debug('decrypting username and token')
                 self._password = veritas.auth.decrypt(
                     token=username_token,
                     encryption_key=os.getenv('ENCRYPTIONKEY'), 
@@ -33,6 +34,7 @@ class Profile(object):
 
             # decrypt ssh_passphrase
             if ssh_token and ssh_token.lower() != 'none':
+                logger.bind(extra="profile").debug('decrypting ssh_token')
                 self._ssh_passphrase = veritas.auth.decrypt(
                     token=ssh_token,
                     encryption_key=os.getenv('ENCRYPTIONKEY'), 
@@ -46,7 +48,7 @@ class Profile(object):
         self._password = password if password else self._password
         self._ssh_key = ssh_key if ssh_key else profile_config.get('profiles',{}).get(profile_name,{}).get('ssh_key')
 
-        logger.info(f'profile added username={self._username} password=xxx ssh_key={self._ssh_key}')
+        logger.bind(extra="profile").info(f'profile added username={self._username} password=xxx ssh_key={self._ssh_key}')
     
     @property
     def username(self) -> str:
