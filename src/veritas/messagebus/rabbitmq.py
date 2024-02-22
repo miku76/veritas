@@ -1,12 +1,20 @@
 import pika
-import sys
 import json
-from datetime import date, datetime, timedelta
-from loguru import logger
 
 
 class Rabbitmq():
+    """Messagebus for rabbitmq
 
+    Parameters
+    ----------
+    app : str
+        name of the app
+    rabbitmq : dict
+        dictionary with rabbitmq connection parameters
+    uuid : str
+        uuid of the app
+
+    """
     def __init__(self, app=None, rabbitmq=None, uuid=None):
         """init veritas messagesbus"""
 
@@ -18,11 +26,18 @@ class Rabbitmq():
         port = rabbitmq.get('port', '5672')
 
         self._connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=host))
+            pika.ConnectionParameters(host=host, port=port))
         self._channel = self._connection.channel()
         self._channel.exchange_declare(exchange='veritas_logs', exchange_type='topic')
 
     def write(self, message):
+        """write message to rabbitmq endpoints
+
+        Parameters
+        ----------
+        message : message.record
+            the message to write
+        """        
         record = message.record
         response = {
             'app': self._app,
