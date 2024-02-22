@@ -9,7 +9,7 @@ class Plugin(object):
             logger.debug('Creating plugin object')
             cls._instance = super(Plugin, cls).__new__(cls)
             # Put any initialization here.
-            cls._registry = {'kobold': {}}
+            cls._registry = {'kobold': {}, 'plugins': {}}
         return cls._instance
 
     def get(self, app, name):
@@ -24,7 +24,7 @@ class Plugin(object):
     # internals
 
     def add(self, app, name, method):
-        logger.debug(f'added {name} to registry')
+        logger.debug(f'added {app}/{name} to registry')
         self._registry[app][name] = method
 
 def kobold(name):
@@ -36,3 +36,11 @@ def kobold(name):
         return func
     return decorator
  
+def register(name):
+    def decorator(func):
+        plugin = Plugin()
+        logger.debug(f'registering {name} / {func}')
+        plugin.add('plugins', name, func)
+        # return fn unmodified
+        return func
+    return decorator
