@@ -495,7 +495,7 @@ class Selection(object):
 
         run = 1
         logger.bind(extra="condense").debug(f'condense run {run}')
-        while self._merge_query_values(root):
+        while self._merge_equal_properties(root):
             run += 1
             logger.bind(extra="condense").debug(f'condense run {run}')
 
@@ -506,10 +506,10 @@ class Selection(object):
         for t in nb.extras.custom_fields.all():
             self._cf_types[t.display] = {'type': str(t.type)}
 
-    def _merge_query_values(self, root: AnyNode) -> bool:
+    def _merge_equal_properties(self, root: AnyNode) -> bool:
         """merge query values
 
-        Sometime we have a logical expression like 'name=lab-01.local or name=lab-02.local'
+        Sometimes we have a logical expression like 'name=lab-01.local or name=lab-02.local'
         Such a query can be merged to 'name=['lab-01.local', 'lab-02.local']'
 
         Parameters
