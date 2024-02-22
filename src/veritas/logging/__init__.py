@@ -2,7 +2,6 @@ import sys
 from loguru import logger
 from importlib.metadata import version
 import functools
-import inspect
 from functools import partialmethod
 from datetime import time
 
@@ -14,8 +13,23 @@ from veritas.messagebus import database as mb_database
 
 __version__ = version("veritas")
 
-def create_logger_environment(config, cfg_loglevel=None, cfg_loghandler=None, app=None, uuid=None):
-    """return database, rabbitmq and formatter"""
+def create_logger_environment(config, cfg_loglevel:str=None, cfg_loghandler:str=None, 
+                              app:str=None, uuid:str=None):
+    """return database, rabbitmq and formatter
+
+    Parameters
+    ----------
+    config : dict
+        the logging configuration
+    cfg_loglevel : str, optional
+        the loglvel, by default None
+    cfg_loghandler : str, optional
+        _description_, by default None
+    app : str, optional
+        name of the app, by default None
+    uuid : _type_, optional
+        used uuid that is logged , by default None
+    """
 
     # we are using our 'custom' journal loglevel. But this only works when using 
     # loguru without zeromq
@@ -121,7 +135,14 @@ def create_logger_environment(config, cfg_loglevel=None, cfg_loghandler=None, ap
             level=loglevel,
             serialize=True)
 
-def minimal_logger(loglevel):
+def minimal_logger(loglevel:str="INFO"):
+    """create minimal logger
+
+    Parameters
+    ----------
+    loglevel : str
+        loglevel
+    """    
     loghandler = sys.stdout
     # configure formatter
     if loglevel.upper() == "DEBUG":
@@ -143,8 +164,18 @@ def minimal_logger(loglevel):
     logger.configure(extra={"extra": "unset"})
     logger.add(loghandler, level=loglevel.upper(), format=logger_format)
 
-def debug_parameter(*, entry=True, exit=True, level="DEBUG"):
+def debug_parameter(*, entry:bool=True, exit:bool=True, level:str="DEBUG"):
+    """decorator to debug parameter
 
+    Parameters
+    ----------
+    entry : bool, optional
+        print debug information when entering, by default True
+    exit : bool, optional
+        print debug information when leaving, by default True
+    level : str, optional
+        the loglevel, by default "DEBUG"
+    """
     def wrapper(func):
         name = func.__name__
 
@@ -161,7 +192,13 @@ def debug_parameter(*, entry=True, exit=True, level="DEBUG"):
     return wrapper
 
 def timeit(func):
+    """decorator to measure time
 
+    Parameters
+    ----------
+    func : callable
+        the function to measure
+    """
     def wrapped(*args, **kwargs):
         start = time.time()
         result = func(*args, **kwargs)
