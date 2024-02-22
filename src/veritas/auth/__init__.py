@@ -9,7 +9,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
 
-def encrypt(password:str, encryption_key:str, salt:str, iterations:int=400000):
+def encrypt(password:str, encryption_key:str, salt:str, iterations:int=400000) -> str:
     """encrypt password
 
     Parameters
@@ -42,7 +42,7 @@ def encrypt(password:str, encryption_key:str, salt:str, iterations:int=400000):
     token = f.encrypt(password_bytes)
     return base64.b64encode(token)
 
-def decrypt(token:str, encryption_key:str, salt:str, iterations:int=400000):
+def decrypt(token:str, encryption_key:str, salt:str, iterations:int=400000) -> str | None:
     """decrypt token
 
     Parameters
