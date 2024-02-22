@@ -208,9 +208,9 @@ class Repository:
         """create a remote"""
         self._repo.create_remote(remote_name, url)
 
-    def has_changes(self):
+    def has_changes(self) -> bool:
         """check if there are changes"""
-        if self._repo.is_dirty(untracked_files=True) -> bool:
+        if self._repo.is_dirty(untracked_files=True):
             logger.debug('Changes detected')
             return True
         return False
