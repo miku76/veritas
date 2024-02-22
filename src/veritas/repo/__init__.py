@@ -17,7 +17,7 @@ class Repository:
             self._repo_name = repo
             self._ssh_cmd = ssh_cmd
             # Initialize repository
-            logger.debug(f'opening REPO {repo} / path={self.path} / ssh={self._ssh_cmd}')
+            logger.bind(extra="repo").debug(f'opening REPO {repo} path={self.path} ssh={self._ssh_cmd}')
             self._open_repository()
 
     def __getattr__(self, item):
