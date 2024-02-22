@@ -24,7 +24,7 @@ class Scheduler(object):
                   job.get('function') == function and \
                   job.get('schedule') == schedule and \
                   job.get('args') == str(args):
-                    logger.info(f'this job is already reghistered {filename}')
+                    logger.info(f'this job is already registered {filename}')
                     return
         sql = """INSERT INTO jobs(filename, module, function, args, schedule)
                  VALUES('%s','%s' ,'%s' , '%s', '%s');""" % (filename, module,function, args, schedule)
