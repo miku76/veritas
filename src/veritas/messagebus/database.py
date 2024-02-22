@@ -36,11 +36,13 @@ class Database():
     def write(self, message):
         """write record either to queue or to database"""
         if self.__use_queue:
+            record = message.record
             self.__queue.put(record)
         else:
             self._message_to_database(message)        
 
     def _message_to_database(self, message):
+        record = message.record
         rcd_vals = {
             'record': message.record,
             'levelno': record['level'].no,
