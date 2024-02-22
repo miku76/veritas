@@ -9,7 +9,23 @@ __version__ = version("veritas")
 
 
 class Profile(object):
+    """This class reads the profile configuration and sets the username, password, ssh_key and ssh_passphrase.
 
+    Parameters
+    ----------
+    profile_config : dict
+        the profile configuration
+    profile_name : str
+        the profile name that should be used
+    username : str
+        the username that should be used
+    psasword : str
+        the password that should be used
+    ssh_key : str  
+        the ssh_key that should be used
+    ssh_passphrase : str
+        the ssh_passphrase that should be used
+    """
     def __init__(self, 
         profile_config=None, profile_name=None, 
         username=None, password=None, 
@@ -52,20 +68,44 @@ class Profile(object):
     
     @property
     def username(self) -> str:
-        """return username"""       
+        """return username
+
+        Returns
+        -------
+        username : str
+            the username
+        """           
         return self._username
     
     @property
     def password(self) -> str:
-        """return password"""       
+        """return password
+
+        Returns
+        -------
+        password : str
+            the password
+        """       
         return self._password
     
     @property
     def ssh_key(self) -> str:
-        """return ssh_key"""       
+        """return ssh_key
+
+        Returns
+        -------
+        ssh_key : str
+            the ssh_key
+        """        
         return self._ssh_key
 
     @property
     def ssh_passphrase(self) -> str:
-        """return _sh_passphrase"""       
+        """retrun ssh_passphrase
+
+        Returns
+        -------
+        ssh_passphrase : str
+            the ssh_passphrase
+        """         
         return self._ssh_passphrase
