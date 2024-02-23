@@ -31,7 +31,6 @@ class Ipam(object):
         return self._nautobot.ipam.ip_addresses.get(address=address,
                                                     namespace=namespace)
 
-    #def get_vlans(self, *unnamed, **named):
     def get_vlans(self, vid=None, name=None, location='', location_type=None,
                   get_single_id=None, get_obj=None, 
                   select=['id', 'vid', 'name', 'location']):
