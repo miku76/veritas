@@ -1,6 +1,5 @@
 from loguru import logger
 from typing import Any, Dict, Type
-from veritas.sot import sot
 from nornir.core.inventory import (
     Inventory,
     Group,
@@ -12,6 +11,9 @@ from nornir.core.inventory import (
     HostOrGroup,
     ParentGroups,
 )
+
+# veritas 
+from veritas.sot import sot
 
 
 def _get_connection_options(data: Dict[str, Any]) -> Dict[str, ConnectionOptions]:

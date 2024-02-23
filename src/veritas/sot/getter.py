@@ -24,7 +24,7 @@ class Getter(object):
         """return nautobot object"""
         return self._nautobot
 
-    def device(self, name:str, by_id:bool=False):
+    def device(self, name:str, by_id:bool=False) -> models.dcim.Devices:
         """get device from nautobot
 
         Parameters
@@ -141,12 +141,6 @@ class Getter(object):
 
     def interface(self, device, interface_name, device_id=None):
         """returns interface of device"""
-        # properties = tools.convert_arguments_to_properties(unnamed, named)
-
-        # device = properties.get('device')
-        # device_id = properties.get('device_id')
-        # interface_name = properties.get('name')
-
         if device_id:
             logger.debug(f'getting Interface {interface_name} of {device_id}')
             return self._nautobot.dcim.interfaces.get(device_id=device_id, 

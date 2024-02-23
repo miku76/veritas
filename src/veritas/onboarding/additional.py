@@ -9,15 +9,34 @@ from slugify import slugify
 from openpyxl import load_workbook
 
 
+# veritas
+from veritas import configparser
+
 # global cache
 _global_cache = {}
 
 
-def additional(device_defaults, device_facts, ciscoconf, onboarding_config):
-    """add device properties to the device properties
+def additional(device_defaults:dict, device_facts:dict, ciscoconf:configparser, onboarding_config:dict) -> benedict:
+    """get additional properties
 
-    Add the beginning our response is empty. At the end this dict contains the additional values that are added to nautobot
-    """
+    Parameters
+    ----------
+    device_defaults : dict
+        device defaults
+    device_facts : dict
+        device facts
+    ciscoconf : configparser
+        configparser object
+    onboarding_config : dict
+        onboard config
+
+    Returns
+    -------
+    additional : benedict
+        additional values
+    """    
+    # At the beginning our response is empty. At the end this dict contains the additional values that are added to nautobot
+    
     basedir = onboarding_config.get('git').get('app_configs').get('path')
     directory = os.path.join(basedir, './onboarding/additional_values/')
     files = []
@@ -57,8 +76,28 @@ def additional(device_defaults, device_facts, ciscoconf, onboarding_config):
                     ciscoconf)
     return response
 
-def get_additional_values_from_file(response, item_config, device_facts, device_defaults, onboarding_config):
-    """return additional values values read from a file"""
+def get_additional_values_from_file(response:benedict, item_config:dict, device_facts:dict, 
+                                    device_defaults:dict, onboarding_config:dict) -> benedict:
+    """get additional values by reading a file
+
+    Parameters
+    ----------
+    response : benedict
+        the current response
+    item_config : dict
+        the config for the item
+    device_facts : dict
+        device facts
+    device_defaults : dict
+        device defaults
+    onboarding_config : dict
+        onboarding config
+
+    Returns
+    -------
+    additinal : benedict
+        additional values
+    """                                    
     file_format = item_config.get('format','csv')
 
     if file_format == 'csv':
@@ -69,7 +108,28 @@ def get_additional_values_from_file(response, item_config, device_facts, device_
         logger.error(f'unknown file format {file_format}')
         return response
 
-def add_values_from_csv(response, item_config, device_facts, device_defaults, onboarding_config):
+def add_values_from_csv(response:benedict, item_config:dict, device_facts:dict,
+                        device_defaults:dict, onboarding_config:dict) -> benedict:
+    """get additinal values by reading a csv file
+
+    Parameters
+    ----------
+    response : benedict
+        current response
+    item_config : dict
+        item config
+    device_facts : dict
+        device facts
+    device_defaults : dict
+        device defaults
+    onboarding_config : dict
+        onboard config
+
+    Returns
+    -------
+    additional : benedict
+        additional values
+    """                        
 
     basedir = onboarding_config.get('git').get('app_configs').get('path')
     directory = os.path.join(basedir, './onboarding/additional_values/')
@@ -120,7 +180,28 @@ def add_values_from_csv(response, item_config, device_facts, device_defaults, on
     csvfile.close()
     return response
 
-def add_values_from_excel(response, item_config, device_facts, device_defaults, onboarding_config):
+def add_values_from_excel(response:benedict, item_config:dict, device_facts:dict, 
+                          device_defaults:dict, onboarding_config:dict) -> benedict:
+    """add additional values by reading an excel file
+
+    Parameters
+    ----------
+    response : benedict
+        current response
+    item_config : dict
+        item config
+    device_facts : dict
+        device facts
+    device_defaults : dict
+        device defaults
+    onboarding_config : dict
+        onboard config
+
+    Returns
+    -------
+    additional : benedict
+        additional values
+    """                          
 
     # read excel file and add values to our response if a certain value matches
     # eg. col 1 of our excel sheet is named 'hostname'. We are now checking 
@@ -201,11 +282,31 @@ def add_values_from_excel(response, item_config, device_facts, device_defaults, 
 
     logger.debug('processed XLSX file successfully')
 
-def get_additional_values_from_config(response, device_facts, device_defaults, item_config, ciscoconf):
-    """Checks whether the device meets the configured criteria.
-       If the device meets the criteria the additional values are added to the device 
-       property.
-    """
+def get_additional_values_from_config(response:benedict, device_facts:dict, device_defaults:dict, 
+                                      item_config:dict, ciscoconf:configparser) -> benedict:
+    """get additional values from config
+
+    Parameters
+    ----------
+    response : benedict
+        current response
+    device_facts : dict
+        device facts
+    device_defaults : dict
+        device defaults
+    item_config : dict
+        item config
+    ciscoconf : configparser
+        configparser object
+
+    Returns
+    -------
+    additional : benedict
+        additional values
+    """                                      
+    # Checks whether the device meets the configured criteria.
+    # If the device meets the criteria the additional values are added to the device 
+    # property.
     matches = get_matches(
         device_facts, 
         device_defaults, 
@@ -244,7 +345,7 @@ def get_additional_values_from_config(response, device_facts, device_defaults, i
         else:
             response[key] = value
 
-def get_matches(device_facts, device_defaults, matches, ciscoconf):
+def get_matches(device_facts:dict, device_defaults:dict, matches:dict, ciscoconf:configparser) -> any:
     """
     loop through ALL matches and check if it matches
     
@@ -319,10 +420,25 @@ def get_matches(device_facts, device_defaults, matches, ciscoconf):
                     if m:
                         #logger.debug(f'regular expression matches on {obj}')
                         return m
-    return False
+    return None
 
-def read_file(filename, device_platform):
-    """read yaml file and check if file must be processed (is active and platform matches)"""
+def read_file(filename:str, device_platform:str) -> dict:
+    """read config file
+
+    read yaml file and check if file must be processed (is active and platform matches)
+
+    Parameters
+    ----------
+    filename : str
+        config filename
+    device_platform : str
+        platform of device
+
+    Returns
+    -------
+    config : dict
+        config
+    """    
     with open(filename) as f:
         config = {}
         logger.debug(f'open file {filename.rsplit("/")[-1]}')

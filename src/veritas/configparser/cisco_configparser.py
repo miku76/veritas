@@ -9,8 +9,16 @@ from veritas.configparser import abstract_configparser
 
 
 class Configparser(abstract_configparser.Configparser):
+    """configparser for Cisco devices
 
-    def __init__(self, config, platform='ios'):
+    Parameters
+    ----------
+    config : list
+        device configuration
+    platform : str
+        platform of the device (ios, nxos, iosxr, asa, ...)
+    """
+    def __init__(self, config:list, platform:str='ios'):
         self._device_config = config
         self._parser = None
         self._template = None
@@ -31,10 +39,34 @@ class Configparser(abstract_configparser.Configparser):
     # abstract methods (mandatory to implement)
     #
 
-    def get_interface_ipaddress(self, interface):
+    def get_interface_ipaddress(self, interface:str) -> dict:
+        """get interface IP address
+
+        Parameters
+        ----------
+        interface : str
+            name of the interface
+
+        Returns
+        -------
+        interface : dict
+            interface configuration
+        """        
         return self._parsed_config[0].get('interfaces', {}).get(interface, {}).get('ip', None)
 
-    def get_interface_name_by_address(self, address):
+    def get_interface_name_by_address(self, address:str) -> str | None:
+        """get interface name by IP address
+
+        Parameters
+        ----------
+        address : str
+            IP address
+
+        Returns
+        -------
+        interface_name : str | None
+            interface name
+        """        
         interfaces = self._parsed_config[0].get('interfaces', {})
         ip = address.split('/')[0]
         for name, properties in interfaces.items():
@@ -43,10 +75,29 @@ class Configparser(abstract_configparser.Configparser):
                 return name
         return None
 
-    def get_interfaces(self):
+    def get_interfaces(self) -> dict:
+        """get interfaces
+
+        Returns
+        -------
+        interfaces : dict
+            interfaces
+        """        
         return self._parsed_config[0].get('interfaces', {})
 
-    def find_in_global(self, properties):
+    def find_in_global(self, properties:dict) -> bool:
+        """check if properties are found in global config
+
+        Parameters
+        ----------
+        properties : dict
+            properties to search for
+
+        Returns
+        -------
+        found : bool
+            True if found, False otherwise
+        """        
         key = None
         value = None
 
@@ -76,7 +127,19 @@ class Configparser(abstract_configparser.Configparser):
         
         return False
 
-    def find_in_interfaces(self, properties):
+    def find_in_interfaces(self, properties:dict) -> list:
+        """return list of interfaces that match properties
+
+        Parameters
+        ----------
+        properties : dict
+            properties to search for
+
+        Returns
+        -------
+        interfaces : list
+            list of interfaces that match properties
+        """        
         key = None
         value = None
         ignore_leading_spaces = False
@@ -118,7 +181,21 @@ class Configparser(abstract_configparser.Configparser):
     # optional functions
     #
 
-    def parse(self, config=None, platform='ios'):
+    def parse(self, config:list=None, platform:str='ios') -> bool:
+        """parse configuration of device
+
+        Parameters
+        ----------
+        config : list, optional
+            device config, by default None
+        platform : str, optional
+            platform, by default 'ios'
+
+        Returns
+        -------
+        parsed : bool
+            true if parsing was successful, false otherwise
+        """        
         # get template
         ttp_template = self._get_template(platform=platform)
         if not ttp_template:
@@ -139,10 +216,16 @@ class Configparser(abstract_configparser.Configparser):
             return True
         except Exception as exc:
             logger.error(f'failed to parse config; got exception {exc}')
-            return None
+            return False
 
-    def get_fqdn(self):
-        """return FQDN of device"""
+    def get_fqdn(self) -> str:
+        """get FQDN of device
+
+        Returns
+        -------
+        fqdn : str
+            fqdn of device
+        """        
         domain = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('domain_name',"")
         hostname = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('hostname')
         if domain:
@@ -150,10 +233,29 @@ class Configparser(abstract_configparser.Configparser):
         else:
             return hostname
 
-    def get_interface(self, interface):
+    def get_interface(self, interface:str) -> dict | None:
+        """get interface configuration by name
+
+        Parameters
+        ----------
+        interface : str
+            name of the interface
+
+        Returns
+        -------
+        interface : dict | None
+            interface configuration or None if not found
+        """        
         return self._parsed_config[0].get('interfaces', {}).get(interface, None)
 
-    def get_vlans(self):
+    def get_vlans(self) -> tuple[list, list, list]:
+        """get vlans of the device
+
+        Returns
+        -------
+        global_vlans, svi, trunk_vlans : tuple[list, list, list]
+            global_vlans, svi, trunk_vlans
+        """        
         global_vlans = []
         svi = []
         trunk_vlans = []
@@ -173,13 +275,47 @@ class Configparser(abstract_configparser.Configparser):
 
         return global_vlans, svi, trunk_vlans
 
-    def get_name(self, name):
+    def get_correct_naming(self, name:str) -> str:
+        """return the right nameing of a port-channel
+
+        nxos and ios uses differnet naming for port-channel
+        ios uses Port-channel, nxos uses port-channel
+
+        Parameters
+        ----------
+        name : str
+            interface name
+
+        Returns
+        -------
+        name : str
+            either Port-channel or port-channel
+        """        
         return self._naming.get(name.lower(), name)
 
-    def get_device_config(self):
+    def get_device_config(self) -> list:
+        """return (not parsed) device configuration
+
+        Returns
+        -------
+        config : list
+            configuration of the device
+        """        
         return self._device_config
 
-    def get_section(self, section):
+    def get_section(self, section:str) -> list:
+        """return section of the device configuration by name
+
+        Parameters
+        ----------
+        section : str
+            name of the section
+
+        Returns
+        -------
+        section : list
+            section of the device configuration
+        """        
         response = []
         if section == "interfaces":
             found = False
@@ -201,7 +337,14 @@ class Configparser(abstract_configparser.Configparser):
 
         return response
 
-    def get_global_config(self):
+    def get_global_config(self) -> list:
+        """return global configuration of the device
+
+        Returns
+        -------
+        global_config : list
+            global configuration of the device
+        """        
         response = []
         for line in self._device_config.splitlines():
             if line.lower().startswith('interface '):
