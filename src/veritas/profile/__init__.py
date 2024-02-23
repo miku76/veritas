@@ -30,7 +30,8 @@ class Profile(object):
         profile_config=None, profile_name=None, 
         username=None, password=None, 
         ssh_key=None, ssh_passphrase=None):
-        """init Profile"""
+        self._username = None
+        self._password = None
 
         if profile_name is not None:
             self._username = profile_config.get('profiles',{}).get(profile_name,{}).get('username')

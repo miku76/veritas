@@ -2,8 +2,6 @@ import os
 import sys
 import textfsm
 from loguru import logger
-from veritas.inventory import veritasInventory
-from veritas.tools import tools
 from nornir import InitNornir
 from nornir.core.plugins.inventory import InventoryPluginRegister
 from nornir_napalm.plugins.tasks import napalm_get, napalm_ping
@@ -12,6 +10,10 @@ from nornir_scrapli.tasks import (
     send_commands,
     send_configs
 )
+
+# veritas
+from veritas.inventory import veritasinventory
+from veritas.tools import tools
 
 
 class Job(object):
@@ -38,7 +40,7 @@ class Job(object):
                  use_primary:bool=True, logging:dict={"enabled": False}):
         
         # we use the veritas inventory plugin
-        InventoryPluginRegister.register("veritas-inventory", veritasInventory.VeritasInventory)
+        InventoryPluginRegister.register("veritas-inventory", veritasinventory.VeritasInventory)
 
         self._sot = sot
         self._nornir = None
