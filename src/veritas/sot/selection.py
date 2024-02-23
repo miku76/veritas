@@ -54,7 +54,7 @@ class Selection(object):
         self._normalize = False
         self._node_id = 0
         self._cf_types = None
-        self._reformat = None
+        self._transform = []
 
         # everything we need to join two tables
         self._join = None
@@ -73,16 +73,6 @@ class Selection(object):
             self._select = select.replace(' ','').split(',')
         elif isinstance(select, list):
             self._select = select
-        # if len(select) > 1:
-        #     self._select = []
-        #     for v in select:
-        #         self._select.append(v)
-        # else:
-        #     for v in select:
-        #         if isinstance(v, str):
-        #             self._select = v.replace(' ','').split(',')
-        #         elif isinstance(v, list):
-        #             self._select = v
 
     def using(self, schema:str) -> None:
         """configures which data source to use
@@ -188,15 +178,15 @@ class Selection(object):
         self._mode = mode
         return self
 
-    def reformat(self, reformat:str) -> None:
-        """reformat
+    def transform(self, transform:list|str) -> None:
+        """transform
 
-        If 'reformat' is set, the data received is transformed to a different format
+        If 'transform' is set, the data received is transformed to a different format
 
         Parameters
         ----------
-        reformat : str
-           reformat response data
+        transform : list | str
+           str or list of strings how to transform the data
 
         Returns
         -------
@@ -207,8 +197,11 @@ class Selection(object):
         -----
         - We implement a fluent syntax. This methods returns self
         """
-        logger.debug(f'setting reformat to {reformat}')
-        self._reformat = reformat
+        logger.debug(f'setting transform to {transform}')
+        if isinstance(transform, str):
+            self._transform = [transform]
+        else:
+            self._transform = transform
         return self
 
     def where(self, *unnamed, **named) -> dict:
@@ -261,13 +254,13 @@ class Selection(object):
 
             # split the on statement
             join_on = self._on.replace(' ','').split('=')
-            join_left_row = join_on[0].replace(f'{self._left_identifier}.','',1)
-            join_right_row = join_on[1].replace(f'{self._right_identifier}.','',1)
+            join_on_left = join_on[0].replace(f'{self._left_identifier}.','',1)
+            join_on_right = join_on[1].replace(f'{self._right_identifier}.','',1)
 
             # add fields we are joining on
             # maybe th user wants a subfield; check if . found and use left part
-            left_select.add(join_left_row.split('.')[0])
-            right_select.add(join_right_row.split('.')[0])
+            left_select.add(join_on_left.split('.')[0])
+            right_select.add(join_on_right.split('.')[0])
             logger.bind(extra="where").debug(f'join detected; left: {self._left_table} as {self._left_identifier}' \
                 f' right: {self._right_table} as {self._right_identifier} using: {self._using}')
 
@@ -296,27 +289,23 @@ class Selection(object):
             logger.bind(extra="where").debug(f'left: {where_left} right: {where_right} ' \
                     f'left_select: {left_select} right_select: {right_select}')
 
-            # we need the raw values from the result and not 'reformatted' ones
-            # save self._reformat and set it to None
-            reformat = self._reformat
-            self._reformat = None
+            # we need the raw values from the result and not 'transformated' ones
+            # save self._transform and set it to None
+            transform = self._transform
+            self._transform = []
 
             # now get the values of the two tables
             left_result = self._parse_sql_query(where_left, list(left_select), self._left_table)
             right_result = self._parse_sql_query(where_right, list(right_select), self._right_table)
 
             # last but not least join the two tables
-            self._reformat = reformat
+            self._transform = transform
             joined_result = self._join_results(left_result, right_result, self._on, left_select, right_select)
-            if 'values_only' in self._reformat:
-                logger.bind(extra="where").debug('returning only values')
-                return queries._values_only(joined_result, left_select, right_select)
-            if 'remove_id' in self._reformat:
-                logger.bind(extra="where").debug('removing id from result')
-                tools.remove_key_from_dict(joined_result, 'id', False)
-            if 'devices_as_pandas' in self._reformat:
-                logger.bind(extra="where").debug('returning result as pandas')
-                return queries._devices_to_pandas(self, joined_result)
+            if self._transform:
+                select_list = []
+                for s in self._select:
+                    select_list.append(s.replace(f'{self._left_identifier}.',''))
+                return queries.transform_data(joined_result, self._transform, select=select_list)
             else:
                 return joined_result
         else:
@@ -337,7 +326,7 @@ class Selection(object):
             using=using, 
             where=expression, 
             mode='gql',
-            reformat=self._reformat)
+            transform=self._transform)
 
     # SQL mode below
     # Querying using the SQL mode is complex. We have to parse the expression and build a logical tree
@@ -437,7 +426,7 @@ class Selection(object):
             using=using, 
             where=where, 
             mode='sql', 
-            reformat=self._reformat)
+            transform=self._transform)
 
     def _build_logical_tree(self, res: dict) -> AnyNode:
         """parse logical expression and build tree"""
@@ -618,7 +607,7 @@ class Selection(object):
                                                     using=using,
                                                     where=values,
                                                     mode='sql',
-                                                    reformat=self._reformat)
+                                                    transform=self._transform)
                 logger.bind(extra="query lt").trace(f'node.response={node.response}')
             else:
                 # have a look at the children and do the logical operation

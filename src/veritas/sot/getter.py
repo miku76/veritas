@@ -180,10 +180,10 @@ class Getter(object):
                     response[loc.name] = row
             return response
 
-    def query(self, select, using, where, mode='sql', reformat=None):
+    def query(self, select, using, where, mode='sql', transform=[]):
         logger.bind(extra="query").debug(f'query select {select} using {using} where {where} (query)')
         if mode == "sql":
-            return queries._execute_sql_query(self, select=select, using=using, where=where, reformat=reformat)
+            return queries._execute_sql_query(self, select=select, using=using, where=where, transform=transform)
         else:
             return queries._execute_gql_query(self, select=select, using=using, where=where)
 

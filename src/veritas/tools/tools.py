@@ -11,6 +11,7 @@ from openpyxl import load_workbook
 # veritas
 import veritas.auth
 
+
 def get_miniapp_config(appname:str, app_path:str, config_file:str=None, subdir:str="miniapps") -> dict | None:
     """return config of miniapp
 
@@ -469,3 +470,18 @@ def write_mail(email_message:str, server_properties:dict):
     smtp.quit()
 
     return True
+
+def flatten_dict_with_lists(dictionary:dict, parent='') -> dict:
+    """this function flattens a dict that contains lists"""
+    for key, value in dictionary.items():
+        if isinstance(value, dict):
+            for k, v in flatten_dict_with_lists(value, parent + key + '.'):
+                yield  k, v
+        elif isinstance(value, list):
+            x = 0
+            for i in value:
+                for k, v in flatten_dict_with_lists(i, key + f'[{x}].'):
+                    x += 1
+                    yield k, v
+        else:
+            yield parent + key, value

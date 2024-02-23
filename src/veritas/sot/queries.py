@@ -8,10 +8,10 @@ from veritas.tools import tools
 # these method are used to execute queries against the SOT and are private
 # they are used by the public methods in the getter.py
 
-def _execute_sql_query(self, select:str, using:str, where:str, reformat: str=None) -> dict:
+def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: list=[]) -> dict:
     """execute sql like query and return data"""
 
-    self._nautobot = self._sot.open_nautobot()
+    getter_obj._nautobot = getter_obj._sot.open_nautobot()
 
     subqueries = {'__interfaces_params__': [],
                   '__interface_assignments_params__': [],
@@ -27,14 +27,14 @@ def _execute_sql_query(self, select:str, using:str, where:str, reformat: str=Non
                   '__vms_params__': []}
 
     # read query from config
-    query = self._sot.sot_config.get('queries',{}).get(using)
+    query = getter_obj._sot.sot_config.get('queries',{}).get(using)
 
-    if 'ipaddress_to_device' == reformat and 'primary_ip4_for' not in select:
-        logger.warning('reformatting ipaddress_to_device needs primary_ip4_for')
+    if 'ipaddress_to_device' in transform and 'primary_ip4_for' not in select:
+        logger.warning('transforming ipaddress_to_device needs primary_ip4_for')
         select.append('primary_ip4_for')
 
     # get final variables for our main parameter
-    query_final_vars, cf_fields_types = _get_query_variables(self, where, "")
+    query_final_vars, cf_fields_types = _get_query_variables(getter_obj, where, "")
     logger.bind(extra="query").debug(f'query_final_vars={query_final_vars}')
 
     # loop through where statement and put values to subqueries and adjust custom field types
@@ -115,32 +115,10 @@ def _execute_sql_query(self, select:str, using:str, where:str, reformat: str=Non
     response = None
     logger.debug(f'select={select} using={using} where={where}')
     with logger.catch():
-        response = self._nautobot.graphql.query(query=query, variables=where).json
+        response = getter_obj._nautobot.graphql.query(query=query, variables=where).json
     if not response:
         logger.error('got no valid response')
         return {}
-
-    if reformat:
-        logger.debug(f'reformating response; reformat={reformat}')
-        if 'remove_id' in reformat:
-            logger.debug('removing id')
-            tools.remove_key_from_dict(response, 'id', key_in_str=False)
-            data = response
-
-        if 'values_only' in reformat:
-            logger.debug('reformating to values only')
-            return values_only(self, dict(response)['data']['devices'], select)
-
-        if 'devices_as_pandas' in reformat:
-            logger.debug('reformating to pandas')
-            return _devices_to_pandas(self, dict(response)['data']['devices'])
-        if 'ipaddress_to_device' == reformat:
-            raw_data = dict(response)['data']['ip_addresses']
-            data = []
-            for device in raw_data:
-                primary_ip4_for = device.get('primary_ip4_for')
-                data.append(primary_ip4_for[0])
-            return data
 
     if 'errors' in response:
         logger.error(f'got error: {response.get("errors")}')
@@ -159,9 +137,12 @@ def _execute_sql_query(self, select:str, using:str, where:str, reformat: str=Non
         data = dict(response)['data']['virtual_machines']
     else:
         data = dict(response).get('data',{}).get('devices',{})
+
+    if transform:
+        return  transform_data(data, transform, select=select)
     return data
 
-def _execute_gql_query(self, select:list, using:str, where: dict={}) -> dict:
+def _execute_gql_query(getter_obj, select:list, using:str, where: dict={}) -> dict:
     """execute GraphQL based queries"""
 
     variables = {}
@@ -180,11 +161,11 @@ def _execute_gql_query(self, select:list, using:str, where: dict={}) -> dict:
                   '__general_params__': [],
                   '__vms_params__': []}
 
-    query = self._sot.sot_config.get('queries',{}).get(using)
+    query = getter_obj._sot.sot_config.get('queries',{}).get(using)
 
     for sq in where:
         prefix = f'{sq}_' if sq != 'devices' else ""
-        qfv, cf_fields_types = _get_query_variables(self, where[sq], prefix)
+        qfv, cf_fields_types = _get_query_variables(getter_obj, where[sq], prefix)
         query_final_vars += qfv
         sq_name = f'__{sq}_params__'
         for key,value in where[sq].items():
@@ -217,7 +198,7 @@ def _execute_gql_query(self, select:list, using:str, where: dict={}) -> dict:
     # print('--- variables ---')
     # print(variables)
 
-    response = self._nautobot.graphql.query(query=query, variables=variables).json
+    response = getter_obj._nautobot.graphql.query(query=query, variables=variables).json
     # logger.debug(response)
     if 'errors' in response:
         logger.error(f'got error: {response.get("errors")}')
@@ -236,7 +217,7 @@ def _execute_gql_query(self, select:list, using:str, where: dict={}) -> dict:
         data = dict(response).get('data',{}).get('devices',{})
     return data
 
-def _get_query_variables(self, data:dict, prefix: str) -> tuple[list, dict]:
+def _get_query_variables(getter_obj, data:dict, prefix: str) -> tuple[list, dict]:
     """return list containing name of paramter and type of cf field types"""
     logger.bind(extra="query_var").debug('running _get_query_variables')
     response = []
@@ -249,7 +230,7 @@ def _get_query_variables(self, data:dict, prefix: str) -> tuple[list, dict]:
         if cf_name.startswith('cf_'):
             logger.bind(extra="query_var").trace('cf_name={cf_name}')
             if not cf_fields_types:
-                cf_fields_types = self.all_custom_fields_type()
+                cf_fields_types = getter_obj.all_custom_fields_type()
 
             # set default value to String
             cf_type = "String"
@@ -279,19 +260,34 @@ def _get_query_variables(self, data:dict, prefix: str) -> tuple[list, dict]:
                 response.append(f'${prefix}{whr}: [String]')
     return response, cf_fields_types
 
-def _devices_to_pandas(self, devices: list) -> pd.DataFrame:
-    """convert devices to pandas dataframe"""
-    my_list = []
-    for device in devices:
-        data = benedict(device, keyattr_dynamic=True)
-        flattened = data.flatten(separator='|')
-        result = {}
-        for key in dict(flattened).keys():
-            result[key.replace('|','.')] = flattened.pop(key)
-        my_list.append(result)
-    return pd.DataFrame.from_records(my_list)
+# transformers (transformers do not need the getter object) 
+# and are called by the getter as well as the selection (where) method when joining data
 
-def values_only(self, data: dict, select:list = None) -> list:
+def transform_data(data: dict, transform:list, **kwargs) -> dict:
+    """transform data"""
+    for transformation  in transform:
+        logger.debug(f'transforming data using {transformation}')
+        if 'remove_id' in transformation:
+            logger.debug('removing id')
+            tools.remove_key_from_dict(data, 'id', key_in_str=False)
+
+        if 'values_only' in transformation:
+            values =  kwargs.get('select',[])
+            data = _values_only(data, values)
+
+        if 'to_pandas' in transformation:
+            data = _to_pandas(data)
+
+        if 'ipaddress_to_device' == transformation:
+            response = []
+            for device in data:
+                primary_ip4_for = device.get('primary_ip4_for')
+                response.append(primary_ip4_for[0])
+            data = response
+
+    return data
+
+def _values_only(data: dict, select:list = None) -> list:
     """return only the values from a dict that are in select list"""
     response = []
     for item in data:
@@ -304,3 +300,15 @@ def values_only(self, data: dict, select:list = None) -> list:
                 continue
         response.append(row)
     return response
+
+def _to_pandas(data: list) -> pd.DataFrame:
+    """convert devices to pandas dataframe"""
+    my_list = []
+    for item in data:
+        flattened = tools.flatten_dict_with_lists(item)
+        result = {}
+        for key,value in flattened:
+            result[key] = value
+        my_list.append(result)
+    
+    return pd.DataFrame.from_records(my_list)
