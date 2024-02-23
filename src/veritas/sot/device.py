@@ -3,7 +3,15 @@ from veritas.tools import tools
 
 
 class Device:
-    
+    """Device class to interact with nautobot to update devices and interfaces
+
+    Parameters
+    ----------
+    sot : Sot
+        Sot object
+    device : str
+        device name
+    """
     def __init__(self, sot, device):
         # init variables
         self._sot = sot
@@ -17,9 +25,22 @@ class Device:
         self._interface = interface_name
         return self
 
-    def update(self, *unnamed, **named):
-        """update device or interface"""
-     
+    def update(self, *unnamed, **named) -> bool:
+        """update device or interface
+
+        Parameters
+        ----------
+        unnamed : list
+            list of unnamed arguments
+        named : dict
+            dictionary of named arguments
+
+        Returns
+        -------
+        bool
+            True if successful, False otherwise
+        """        
+
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
         if self._interface:
             return self.update_interface(properties)
@@ -34,8 +55,19 @@ class Device:
             logger.error(f'device {self._device} not found')
             return False        
 
-    def update_interface(self, properties):
-        """update interface on device"""
+    def update_interface(self, properties:dict) -> bool:
+        """update interface
+
+        Parameters
+        ----------
+        properties : dict
+            properties to update
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         interface = self._nautobot.dcim.interfaces.get(
                     device=[self._device],
                     name=self._interface)
@@ -50,14 +82,39 @@ class Device:
             logger.error(f'could not update interface; got exception {exc}')
             return False
 
-    def set_tags(self, new_tags):
+    def set_tags(self, new_tags:list) -> bool:
+        """set tags of device or interface
+
+        Parameters
+        ----------
+        new_tags : list
+            list of tags to set
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         if self._interface:
             return self.add_interface_tags(new_tags, set_tag=True)
         else:
             return self.add_tags(new_tags, set_tag=True)
 
-    def add_tags(self, new_tags, set_tag=False):
-        """add tags on device"""
+    def add_tags(self, new_tags:list, set_tag:bool=False) -> bool:
+        """add tags on device
+
+        Parameters
+        ----------
+        new_tags : list
+            list of tags to add
+        set_tag : bool, optional
+            if true, tags are set otherewise tags are added, by default False
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         if self._interface:
             return self.add_interface_tags(new_tags, set_tag=False)
 
@@ -90,7 +147,19 @@ class Device:
             logger.debug(f'final list of tags {properties}')
             return self.update(properties)
 
-    def delete_tags(self, tags_to_delete):
+    def delete_tags(self, tags_to_delete:list) -> bool:
+        """delete tags from device or interface
+
+        Parameters
+        ----------
+        tags_to_delete : list
+            list of tags to delete
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         if self._interface:
             return self.delete_interface_tags(tags_to_delete)
         
@@ -115,8 +184,21 @@ class Device:
         properties = {'tags': device_tags}
         return self.update(properties)
 
-    def add_interface_tags(self, new_tags, set_tag=False):
-        """add tags on interface"""
+    def add_interface_tags(self, new_tags:list, set_tag:bool=False) -> bool:
+        """add tags on interface
+
+        Parameters
+        ----------
+        new_tags : list
+            list of tags to add
+        set_tag : bool, optional
+            if true tags are set otherwise tags are added, by default False
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         final_list = []
 
         interface = self._nautobot.dcim.interfaces.get(
@@ -152,7 +234,19 @@ class Device:
                 logger.error(f'could not update interface; got exception {exc}')
                 return False
 
-    def delete_interface_tags(self, tags_to_delete):
+    def delete_interface_tags(self, tags_to_delete:list) -> bool:
+        """delete interface tags
+
+        Parameters
+        ----------
+        tags_to_delete : list
+            list of tags to delete
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         logger.debug(f'deleting tags {tags_to_delete} on {self._device}/{self._interface}')
 
         interface = self._nautobot.dcim.interfaces.get(
@@ -180,8 +274,19 @@ class Device:
             logger.error(f'could not delete tags on interface; got exception {exc}')
             return False
 
-    def set_customfield(self, properties):
-        """set custom field on device or interface"""
+    def set_customfield(self, properties:dict) -> bool:
+        """set customfield on device or interface
+
+        Parameters
+        ----------
+        properties : dict
+            properties to set
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         if self._interface:
             return self.set_interface_customfield(properties)
 
@@ -192,7 +297,19 @@ class Device:
     
         return device.update(properties)
 
-    def set_interface_customfield(self, properties):
+    def set_interface_customfield(self, properties:dict) -> bool:
+        """set interface customfield
+
+        Parameters
+        ----------
+        properties : dict
+            properties to set
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
         interface = self._nautobot.dcim.interfaces.get(
                     device=[self._device],
                     name=self._interface)
