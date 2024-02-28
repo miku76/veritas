@@ -13,10 +13,22 @@ from nornir.core.inventory import (
 )
 
 # veritas 
-from veritas.sot import sot
+from veritas.sot import sot as veritas_sot
 
 
 def _get_connection_options(data: Dict[str, Any]) -> Dict[str, ConnectionOptions]:
+    """return ConnectionOptions object containung all parameter that are needed to connect to a device
+
+    Parameters
+    ----------
+    data : Dict[str, Any]
+        the data to add
+
+    Returns
+    -------
+    Dict[str, ConnectionOptions]
+        the ConnectionOptions options
+    """    
     cp = {}
     for cn, c in data.items():
         cp[cn] = ConnectionOptions(
@@ -30,6 +42,18 @@ def _get_connection_options(data: Dict[str, Any]) -> Dict[str, ConnectionOptions
     return cp
 
 def _get_defaults(data: Dict[str, Any]) -> Defaults:
+    """return Defaults object depending on the data
+
+    Parameters
+    ----------
+    data : Dict[str, Any]
+        the data to add to the object
+
+    Returns
+    -------
+    Defaults
+        Defaults object
+    """    
     return Defaults(
         hostname=data.get("hostname"),
         port=data.get("port"),
@@ -41,9 +65,29 @@ def _get_defaults(data: Dict[str, Any]) -> Defaults:
     )
 
 def _get_inventory_element(
-        typ: Type[HostOrGroup], data: Dict[str, Any], name: str, defaults: Defaults
-    ) -> HostOrGroup:
-    return typ(
+        type_: Type[HostOrGroup], 
+        data: Dict[str, Any], 
+        name: str, 
+        defaults: Defaults) -> HostOrGroup:
+    """return either a Host or a Group object that contains the data
+
+    Parameters
+    ----------
+    type_ : Type[HostOrGroup]
+        The type of the object to return
+    data : Dict[str, Any]
+        the data to add to the object
+    name : str
+        the name of the object
+    defaults : Defaults
+        the default values of the object
+
+    Returns
+    -------
+    HostOrGroup
+        Either a Host or a Group
+    """        
+    return type_(
         name=name,
         hostname=data.get("hostname"),
         port=data.get("port"),
@@ -51,52 +95,116 @@ def _get_inventory_element(
         password=data.get("password"),
         platform=data.get("platform"),
         data=data.get("data"),
-        groups=data.get(
-            "groups"
-        ),
+        groups=data.get("groups"),
         defaults=defaults,
         connection_options=_get_connection_options(data.get("connection_options", {})),
     )
 
 
 class VeritasInventory:
+    """VeritasInventory is a class to create a nornir inventory from a veritas SOT
+
+    Parameters
+    ----------
+    sot : veritas_sot
+        The veritas sot object
+    where : str
+        The where clause to filter the devices
+    use_primary_ip : bool
+        Use the primary IP address as the hostname
+    username : str
+        The default username
+    password : str
+        The default password
+    connection_options : Dict[str, Any]
+        The default connection options
+    data : Dict[str, Any]
+        The default data
+    select : list
+        Additional select values
+    host_groups : list
+        Additional host groups
+    defaults : Dict[str, Any]
+        The default values
+    groups : Dict[str, Any]
+        The groups
+
+    Improtant Note:
+
+    group must be the following format:
+    
+        groups = {'net': {'data': {'key': 'value'} }}
+
+    Otherwise the data is not automatically added to the host.
+    You can get the group data by using the following code:
+
+        nr.inventory.groups['net'].items()
+
+    The group data is added to the host. To get a list of all items of the host use:
+
+        nr.inventory.hosts['lab.local'].items()
+
+
+    """    
     def __init__(
-        self,
-        url: str,
-        ssl_verify: bool,
-        token: str,
-        query: str,
-        use_primary_ip: bool = True,
-        username: str = "",
-        password: str = "",
-        connection_options: Dict[str, Any] = {},
-        data: Dict[str, Any] = {},
-        host_groups: list = [],
-        groups: Dict[str, Any] = {}
-        ) -> None:
-        self.url = url
-        self.ssl_verify = ssl_verify
-        self.token = token
-        self.query = query
+            self,
+            sot: veritas_sot,
+            where: str,
+            use_primary_ip: bool = True,
+            username: str = "",
+            password: str = "",
+            connection_options: Dict[str, Any] = {},
+            data: Dict[str, Any] = {},
+            select: list = [],
+            host_groups: list = [],
+            defaults: Dict[str, Any] = {},
+            groups: Dict[str, Any] = {},
+            ) -> None:
+        self.sot = sot
+        self.where = where
         self.use_primary_ip = use_primary_ip
         self.username = username
         self.password = password
         self.connection_options = connection_options
         self.data = data
+        self.select = select
         self.host_groups = host_groups
+        self.defaults = defaults
         self.groups = groups
 
-    def load(self) -> Inventory:
+        #
+        # group must be the following format:
+        # groups = {'net': {'data': {'key': 'value'} }}
+        #
 
-        devicelist = {}
-        nb = sot.Sot(token=self.token, 
-                     url=self.url, 
-                     ssl_verify=self.ssl_verify)
+    def load(self) -> Inventory:
+        """load inventory
+
+        Execute a query to get all devices and data from the SOT and create a nornir inventory
+
+        Returns
+        -------
+        Inventory
+            The Inventoty object containing the hosts, the groups and the default values
+        """
+        hosts = Hosts()
+        groups = Groups()
+
+        # the additional select values must be a list
+        if isinstance(self.select,str):
+            self.select = [self.select]
         # if the user wants 'data' or groups we have to add those fields to our select list
-        select = ['hostname', 'primary_ip4', 'platform'] + self.data.get('sot',[])
-        sot_devicelist = nb.select(select) \
-                           .using('nb.devices') \
-                           .where(self.query)
+        select = ['hostname', 'primary_ip4', 'platform'] + self.select
+        logger.bind(extra="inventory").debug(f'select: {select}')
+        sot_devicelist = self.sot.select(select) \
+                                 .using('nb.devices') \
+                                 .where(self.where)
+
+        # get defaults
+        if self.defaults:
+            defaults = _get_defaults(self.defaults)
+        else:
+            defaults = Defaults()
 
         for device in sot_devicelist:
             hostname = device.get('hostname')
@@ -107,61 +215,61 @@ class VeritasInventory:
             primary_ip4 = sot_ip4.split('/')[0] if sot_ip4 is not None else hostname
             host_or_ip = primary_ip4 if self.use_primary_ip else hostname
             platform = device.get('platform',{}).get('name','ios') if device['platform'] else 'ios'
-            manufacturer = device.get('platform',{}).get('manufacturer',{}).get('name') if device['platform']['manufacturer'] else 'cisco'
+            manufacturer = device.get('platform',{}).get('manufacturer',{}).get('name') \
+                if device['platform']['manufacturer'] else 'cisco'
 
-            # data is used to prepare data that is used later
-            # host = nr.inventory.hosts[hostname]
-            # platform = host['platform]
+            # data is added to the host and can be used by the user
             _data = {'platform': platform,
                      'primary_ip': primary_ip4,
                      'manufacturer': manufacturer}
+
+            for key in self.select:
+                if key.startswith('cf_'):
+                    ky = key.replace('cf_','')
+                    _data[ky] = device.get('custom_field_data',{}).get(ky)
+                else:
+                    _data[key] = device.get(key)
+
             # add all keys to data
             for key in self.data.keys():
-                if 'sot' == key:
-                    sot_keys = self.data.get('sot')
-                    for sot_key in sot_keys:
-                        if sot_key.startswith('cf_'):
-                            sk = sot_key.replace('cf_','')
-                            _data[sk] = device.get(sk)
-                        else:
-                            _data[sot_key] = device.get(sot_key)
-                else:
-                    _data[key] = self.data.get(key)
+                _data[key] = self.data.get(key)
 
             _host_groups = []
             for key in self.host_groups:
                 if key.startswith('cf_'):
                     ky = key.replace('cf_','')
-                    _host_groups.append(device.get(ky))
+                    group = device.get('custom_field_data',{}).get(ky)
+                    _host_groups.append(group.replace(' ',''))
                 else:
-                    _host_groups.append(device.get(key))
+                    group = device.get(key)
+                    _host_groups.append(group.replace(' ',''))
+            logger.bind(extra="inventory").debug(f'host groups: {" ".join(_host_groups)}')
 
-            devicelist[hostname] = {'hostname': host_or_ip,
-                                    'port': 22,
-                                    'username': self.username,
-                                    'password': self.password,
-                                    'platform': platform,
-                                    'data': _data,
-                                    'groups': _host_groups,
-                                    'connection_options': self.connection_options
-                                   }
+            device_properties = {'host': hostname,
+                                 'hostname': host_or_ip,
+                                 'port': 22,
+                                 'username': self.username,
+                                 'password': self.password,
+                                 'platform': platform,
+                                 'data': _data,
+                                 'groups': _host_groups,
+                                 'connection_options': self.connection_options
+                                }
+            logger.bind(extra="inventory").debug(f'adding device {hostname} to inventory')
+            host = _get_inventory_element(Host, device_properties, hostname, defaults)
+            hosts[hostname] = host
 
-        # defaults = Defaults()
-        defaults_dict = {}
-        defaults = _get_defaults(defaults_dict)
-            
-        hosts = Hosts()
-        for n, h in devicelist.items():
-            hosts[n] = _get_inventory_element(Host, h, n, defaults)
+        for name, group_data in self.groups.items():
+            logger.bind(extra="inventory").debug(f'adding group: {name} {group_data}')
+            groups[name] = _get_inventory_element(Group, group_data, name, defaults)
 
-        groups = Groups()
-        for n, g in self.groups.items():
-            groups[n] = _get_inventory_element(Group, g, n, defaults)
+        for group in groups.values():
+            logger.bind(extra="inventory").debug(f'preparing group: {group}')
+            group.groups = ParentGroups([groups[g] for g in group.groups])
 
-        for g in groups.values():
-            g.groups = ParentGroups([groups[g] for g in g.groups])
+        # set the groups for the hosts
+        for host in hosts.values():
+            host.groups = ParentGroups([groups[g] for g in host.groups])
 
-        for h in hosts.values():
-            h.groups = ParentGroups([groups[g] for g in h.groups])
-
+        logger.bind(extra="nornir").trace(f"inventory: {hosts}")
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
