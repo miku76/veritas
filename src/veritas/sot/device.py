@@ -1,6 +1,7 @@
 from loguru import logger
-from veritas.tools import tools
 
+# veritas
+from veritas.tools import tools
 
 class Device:
     """Device class to interact with nautobot to update devices and interfaces

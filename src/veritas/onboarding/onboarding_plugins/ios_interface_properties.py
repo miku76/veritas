@@ -55,9 +55,9 @@ class InterfaceProperties(abc_interface.Interface):
                 cidr = f'{interface.get("ip")}/{ipv4.prefixlen}'
             interface_properties.update({"ip_addresses": [
                                             {"address": cidr,
-                                            "status": {
+                                             "status": {
                                                 "name": "Active"
-                                            }
+                                             }
                                             }
                                         ]})
 
@@ -77,8 +77,8 @@ class InterfaceProperties(abc_interface.Interface):
                 logger.debug(f'interface is access switchport {name}')
                 data = {"mode": "access",
                         "untagged_vlan": {'vid': interface.get('vlan'),
-                                        'location': {'name': location}
-                                        }
+                                          'location': {'name': location}
+                                         }
                     }
             # process trunks
             elif mode == 'trunk':
@@ -89,8 +89,8 @@ class InterfaceProperties(abc_interface.Interface):
                     vlans = []
                     for vlan in interface.get('vlans_allowed'):
                         vlans.append({'vid': vlan,
-                                    'location': {'name': location}
-                                    })
+                                      'location': {'name': location}
+                                     })
                     data = {'mode': 'tagged', 
                             'tagged_vlans': vlans}
                 else:

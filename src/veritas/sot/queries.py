@@ -305,7 +305,7 @@ def _to_pandas(data: list) -> pd.DataFrame:
     """convert devices to pandas dataframe"""
     my_list = []
     for item in data:
-        flattened = tools.flatten_dict_with_lists(item)
+        flattened = tools.flatten_dict_containing_lists(item)
         result = {}
         for key,value in flattened:
             result[key] = value
