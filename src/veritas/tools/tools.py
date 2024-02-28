@@ -5,6 +5,7 @@ import pytricia
 import hashlib
 import smtplib
 import datetime
+import re
 from loguru import logger
 from openpyxl import load_workbook
 
@@ -436,9 +437,9 @@ def analyze_nornir_result(result) -> dict:
             changed = result[host][i].changed
             analysis[host][name] = {'failed': failed,
                                     'changed': changed}
-            # logger.bind(extra=host).debug(f'{i}: name: {name}')
-            # logger.bind(extra=host).debug(f'{i}: failed: {failed}')
-            # logger.bind(extra=host).debug(f'{i}: changed: {changed}')
+            logger.bind(extra=host).debug(f'{i}: name: {name}')
+            logger.bind(extra=host).debug(f'{i}: failed: {failed}')
+            logger.bind(extra=host).debug(f'{i}: changed: {changed}')
 
     return analysis
 
@@ -471,17 +472,120 @@ def write_mail(email_message:str, server_properties:dict):
 
     return True
 
-def flatten_dict_with_lists(dictionary:dict, parent='') -> dict:
+def flatten_dict_containing_lists(dictionary:dict, parent='') -> dict:
     """this function flattens a dict that contains lists"""
     for key, value in dictionary.items():
         if isinstance(value, dict):
-            for k, v in flatten_dict_with_lists(value, parent + key + '.'):
+            for k, v in flatten_dict_containing_lists(value, parent + key + '.'):
                 yield  k, v
         elif isinstance(value, list):
             x = 0
             for i in value:
-                for k, v in flatten_dict_with_lists(i, key + f'[{x}].'):
+                for k, v in flatten_dict_containing_lists(i, key + f'[{x}].'):
                     x += 1
                     yield k, v
         else:
             yield parent + key, value
+
+    def find_in_line(self, key:str, lookup:str, value:str, line:str) -> bool:
+        """find value in line
+
+        n - not equal to (negation)
+        ic - case-insensitive contains (*)
+        c - case-sensitive contains (*)
+        ie - case-insensitive exact match (*)
+        isw - case-insensitive starts-with
+        iew - case-insensitive ends-with
+        re - case-sensitive regular expression match
+        nic - negated case-insensitive contains
+        nisw - negated case-insensitive starts-with
+        niew - negated case-insensitive ends-with
+        nie - negated case-insensitive exact match
+        nre - negated case-sensitive regular expression match
+        ire - case-insensitive regular expression match
+        nire - negated case-insensitive regular expression match
+
+        Parameters
+        ----------
+        key : str
+            what to do (currently only match is supported)
+        lookup : str
+            the lookup type (ie, ic, c, n, ...)
+        value : str
+            the value to look for
+        line : str
+            the line to search in
+
+        Returns
+        -------
+        bool
+            true if found, false otherwise
+        """
+
+        # logger.debug(f'key: {key} lookup: {lookup} value: {value} line: {line}')
+        if key == 'match':
+            if lookup == "ie":
+                # case-insensitive exact match
+                if line.lower() == value.lower():
+                    return True
+            elif lookup == "ic":
+                # case-insensitive contains
+                if value.lower() in line.lower():
+                    return True
+            elif lookup == "c":
+            # case-sensitive contains
+                if value in line:
+                    return True
+            elif lookup == "isw":
+                # case-insensitive starts-with
+                if line.lower().startswith(value.lower()):
+                    return True
+            elif lookup == "iew":
+                # case-insensitive ends-with
+                if line.lower().endswith(value.lower()):
+                    return True
+            elif lookup == "re":
+                # case-sensitive regular expression match
+                # compile regular expression
+                pattern = re.compile(value)
+                if pattern.search(line):
+                    return True
+            elif lookup == "nic":
+                # negated case-insensitive contains
+                if value.lower() not in line.lower():
+                    return True
+            elif lookup == "nisw":
+                # negated case-insensitive starts-with
+                if not line.lower().startswith(value.lower()):
+                    return True
+            elif lookup == "niew":
+                # negated case-insensitive ends-with
+                if not line.lower().endswith(value.lower()):
+                    return True
+            elif lookup == "nie":
+                # negated case-insensitive exact match
+                if line.lower() != value.lower():
+                    return True
+            elif lookup == "nre":
+                # negated case-sensitive regular expression match
+                # compile regular expression
+                pattern = re.compile(value)
+                if not pattern.search(line):
+                    return True
+            elif lookup == "ire":    
+                # case-insensitive regular expression match
+                # compile regular expression
+                pattern = re.compile(value, re.IGNORECASE)
+                if pattern.search(line):
+                    return True
+            elif lookup == "nire":
+                # negated case-insensitive regular expression match
+                # compile regular expression
+                pattern = re.compile(value, re.IGNORECASE)
+                if not pattern.search(line):
+                    return True
+            else:
+                if line == value:
+                    return True
+
+        return False
