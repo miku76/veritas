@@ -15,7 +15,9 @@ class Plugin(object):
         if cls._instance is None:
             logger.debug('Creating plugin object')
             cls._instance = super(Plugin, cls).__new__(cls)
-            cls._registry = {'kobold': {}, 'plugins': {}}
+            cls._registry = {'kobold': {},
+                             'orchestrator': {},
+                             'plugins': {}}
         return cls._instance
 
     def get(self, app:str, name:str) -> callable:
@@ -49,6 +51,21 @@ class Plugin(object):
             the method that is registered
         """
         return self._registry.get('kobold',{}).get(name)
+    
+    def get_orchestrator_plugin(self, name:str) -> callable:
+        """return orchestrator plugin
+
+        Parameters
+        ----------
+        name : str
+            name of the registered plugin
+
+        Returns
+        -------
+        callable
+            the method that is registered
+        """
+        return self._registry.get('orchestrator',{}).get(name)
     
     def get_registry(self, app:str) -> dict:
         """return registry
@@ -87,6 +104,15 @@ def kobold(name:str):
         plugin = Plugin()
         logger.debug(f'registering {name} / {func}')
         plugin.add('kobold', name, func)
+        # return fn unmodified
+        return func
+    return decorator
+
+def orchestrator(name:str):
+    def decorator(func):
+        plugin = Plugin()
+        logger.debug(f'registering {name} / {func}')
+        plugin.add('orchestrator', name, func)
         # return fn unmodified
         return func
     return decorator
