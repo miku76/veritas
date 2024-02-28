@@ -1,6 +1,6 @@
 from loguru import logger
 from ntc_templates.parse import parse_output
-from napalm.base.exceptions import ConnectionException, SSHException
+from napalm.base.exceptions import ConnectionException
 import napalm
 import importlib
 import os
@@ -23,17 +23,18 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
         self._manufacturer = kwargs.get('manufacturer', 'cisco')
         self._timeout = kwargs.get('timeout', 60)
 
-    def open(self, optional_args={}):
+    def open(self, timeout=60, optional_args={}):
         # Use the appropriate network driver to connect to the device:
         driver = napalm.get_network_driver(self._platform)
 
         opt ={"port": self._port}
         opt.update(optional_args)
-
+        logger.debug(f'opening connection to {self._ip_address} opt: {opt}')
         self._connection = driver(
             hostname=self._ip_address,
             username=self._username,
             password=self._password,
+            timeout=timeout,
             optional_args=opt
         )
 
@@ -41,7 +42,7 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
         try:
             self._connection.open()
             logger.debug('connection established')
-        except (SSHException, ConnectionException) as e:
+        except ConnectionException as e:
             logger.error(f'Failed to connect to {self._ip_address} due to {type(e).__name__}')
     
     def has_open_connection(self):
@@ -58,32 +59,19 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
         self._connection.close()
     
     def disable_paging(self):
-        if not self._connection:
-                if not self.open():
-                    return None
         response = self._connection.cli('terminal length 0')
         return response.result
 
     def get_config(self, configtype='running'):
         logger.debug(f'send show {configtype} to {self._ip_address}')
-        if not self._connection:
-                if not self.open():
-                    return None
         config = self._connection.get_config(retrieve=configtype)
         return config.get(configtype)
 
     def write_config(self):
-        if not self._connection:
-                if not self.open():
-                    return None
         logger.debug(f'writing config on {self._ip_address}')
         return self._connection._netmiko_device.save_config()
 
     def send_configs_from_file(self, configfile):
-        if not self._connection:
-                if not self.open():
-                    return False
-
         with open(configfile, 'r') as cf:
             commands = [line.rstrip() for line in cf]
 
@@ -91,24 +79,12 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
         return self._connection.cli(commands)
 
     def send_commands(self, commands):
-        if not self._connection:
-            if not self.open():
-                return None
-
         return self._connection.cli(commands)
 
     def send_configs(self, commands):
-        if not self._connection:
-            if not self.open():
-                return None
-
         return self._connection.cli(commands)
 
     def send(self, *unnamed, **named):
-        if not self._connection:
-            if not self.open():
-                return None
-
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
         if isinstance(properties, str):
             return self.send_and_parse_command(commands=[properties])
@@ -117,10 +93,6 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
 
     def send_and_parse_command(self, *unnamed, **named):
         """send command(s) to device and parse output"""
-        if not self._connection:
-            if not self.open():
-                return None
-
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
         commands = properties.get('commands')
         use_own_templates = properties.get('own_templates', False)
@@ -194,35 +166,22 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
         return facts
 
     def replace_config(self, filename):
-        if not self._connection:
-            if not self.open():
-                return None
         logger.debug(f'replace configuration with {filename}')
         return self._connection.load_replace_candidate(filename=filename)
 
-    def load_config(self, config):
-        if not self._connection:
-            if not self.open():
-                return None
-        return self._connection.load_merge_candidate(config=config)
+    def load_config(self, filename=None, config=None):
+        cfg = True if config else False
+        logger.debug(f'load configuration filename={filename} config={cfg}')
+        return self._connection.load_replace_candidate(filename=filename, config=config)
 
     def merge_config(self, config):
-        if not self._connection:
-            if not self.open():
-                return None
         return self._connection.load_merge_candidate(config=config)
 
     def abort_config(self, config=None):
-        if not self._connection:
-            if not self.open():
-                return None
         logger.debug('discarding config')
         return self._connection.discard_config()
 
-    def commit_config(self, config=None, revert_in=None):
-        if not self._connection:
-            if not self.open():
-                return None
+    def commit_config(self, revert_in=None):
         if revert_in:
             logger.debug(f'commit config revert_in={revert_in}')
             return self._connection.commit_config(revert_in=revert_in)
@@ -231,21 +190,12 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
             return self._connection.commit_config()
 
     def diff_config(self, config=None):
-        if not self._connection:
-            if not self.open():
-                return None
         return self._connection.compare_config()
 
     def has_pending_commits(self):
-        if not self._connection:
-            if not self.open():
-                return None
         return self._connection.has_pending_commit()
 
     def rollback(self):
-        if not self._connection:
-            if not self.open():
-                return None
         logger.debug('rollback config')
         return self._connection.rollback()
     
