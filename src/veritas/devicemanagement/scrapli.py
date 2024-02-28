@@ -73,7 +73,7 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
             "ssh_config_file": True
         }
 
-        if self._ssh_key:
+        if self._ssh_keyfile:
             device["auth_private_key"] = self._ssh_keyfile
 
         self._connection = Scrapli(**device)
