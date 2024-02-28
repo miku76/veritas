@@ -6,6 +6,7 @@ from loguru import logger
 # veritas
 from veritas.onboarding import plugins
 from veritas.configparser import abstract_configparser
+from veritas import tools
 
 
 class Configparser(abstract_configparser.Configparser):
@@ -51,7 +52,7 @@ class Configparser(abstract_configparser.Configparser):
         -------
         interface : dict
             interface configuration
-        """        
+        """  
         return self._parsed_config[0].get('interfaces', {}).get(interface, {}).get('ip', None)
 
     def get_interface_name_by_address(self, address:str) -> str | None:
@@ -66,7 +67,7 @@ class Configparser(abstract_configparser.Configparser):
         -------
         interface_name : str | None
             interface name
-        """        
+        """
         interfaces = self._parsed_config[0].get('interfaces', {})
         ip = address.split('/')[0]
         for name, properties in interfaces.items():
@@ -82,7 +83,7 @@ class Configparser(abstract_configparser.Configparser):
         -------
         interfaces : dict
             interfaces
-        """        
+        """
         return self._parsed_config[0].get('interfaces', {})
 
     def find_in_global(self, properties:dict) -> bool:
@@ -97,7 +98,7 @@ class Configparser(abstract_configparser.Configparser):
         -------
         found : bool
             True if found, False otherwise
-        """        
+        """
         key = None
         value = None
 
@@ -121,7 +122,7 @@ class Configparser(abstract_configparser.Configparser):
             else:
                 src = line
 
-            if self._find_in_line(cmd, lookup, value, src):
+            if tools.find_in_line(cmd, lookup, value, src):
                 logger.debug('found pattern in global config')
                 return True
         
@@ -139,7 +140,7 @@ class Configparser(abstract_configparser.Configparser):
         -------
         interfaces : list
             list of interfaces that match properties
-        """        
+        """
         key = None
         value = None
         ignore_leading_spaces = False
@@ -171,11 +172,26 @@ class Configparser(abstract_configparser.Configparser):
             if src.lower().startswith('interface '):
                 interface = line[10:]
             
-            if self._find_in_line(cmd, lookup, value, src):
+            if tools.find_in_line(cmd, lookup, value, src):
                 matched_on.append(interface)
 
         logger.debug(f'matched_on={matched_on}')
         return matched_on
+
+    def get_fqdn(self) -> str:
+        """return FQDN of device
+
+        Returns
+        -------
+        fqdn : str
+            fqdn of device
+        """
+        domain = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('domain_name',"")
+        hostname = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('hostname')
+        if domain:
+            return f'{hostname}.{domain}'
+        else:
+            return hostname
 
     #
     # optional functions
@@ -217,21 +233,6 @@ class Configparser(abstract_configparser.Configparser):
         except Exception as exc:
             logger.error(f'failed to parse config; got exception {exc}')
             return False
-
-    def get_fqdn(self) -> str:
-        """get FQDN of device
-
-        Returns
-        -------
-        fqdn : str
-            fqdn of device
-        """        
-        domain = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('domain_name',"")
-        hostname = self._parsed_config[0].get('global', {}).get('fqdn',{}).get('hostname')
-        if domain:
-            return f'{hostname}.{domain}'
-        else:
-            return hostname
 
     def get_interface(self, interface:str) -> dict | None:
         """get interface configuration by name
@@ -361,53 +362,28 @@ class Configparser(abstract_configparser.Configparser):
     # internals
     #
 
-    def _find_in_line(self, key, lookup, value, line):
-        """
-        n - not equal to (negation)
-        ic - case-insensitive contains (*)
-        c - case-sensitive contains (*)
-        ie - case-insensitive exact match (*)
-
-        nic - negated case-insensitive contains
-        isw - case-insensitive starts-with
-        nisw - negated case-insensitive starts-with
-        iew - case-insensitive ends-with
-        niew - negated case-insensitive ends-with
-        nie - negated case-insensitive exact match
-        re - case-sensitive regular expression match
-        nre - negated case-sensitive regular expression match
-        ire - case-insensitive regular expression match
-        nire - negated case-insensitive regular expression match
-        """
-
-        # logger.debug(f'key: {key} lookup: {lookup} value: {value} line: {line}')
-        if key == 'match':
-            if lookup == "ie":
-                # case-insensitive exact match
-                if line.lower() == value.lower():
-                    return True
-            elif lookup == "ic":
-                # case-insensitive contains
-                if value.lower() in line.lower():
-                    return True
-            elif lookup == "c":
-            # case-sensitive contains
-                if value in line:
-                    return True
-            else:
-                if line == value:
-                    return True
-
-        return False
-
     def _save_naming(self):
+        """save the naming of port-channel interface
+        """        
         for interface in self._parsed_config[0].get('interfaces', {}):
             if 'Port-channel' in interface:
                 self._naming["port-channel"] = "Port-channel"
             if 'port-channel' in interface:
                 self._naming["port-channel"] = "port-channel"
 
-    def _get_template(self, platform='ios'):
+    def _get_template(self, platform:str='ios') -> str | None:
+        """return template for the platform
+
+        Parameters
+        ----------
+        platform : str, optional
+            platform of the device, by default 'ios'
+
+        Returns
+        -------
+        template : str | None
+            the template or None if failure or not found
+        """        
         if self._template is not None:
             return self._template
 
@@ -435,5 +411,19 @@ class Configparser(abstract_configparser.Configparser):
         return ttp_template
 
 @plugins.configparser('ios')
-def get_configparser(config, platform):
+def get_configparser(config:list, platform:str='ios') -> Configparser:
+    """init configparser for Cisco devices
+
+    Parameters
+    ----------
+    config : list
+        the device configuration
+    platform : str, optional
+        the platform, by default 'ios'
+
+    Returns
+    -------
+    Configparser
+        the configparser
+    """    
     return Configparser(config=config, platform=platform)
