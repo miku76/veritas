@@ -14,6 +14,7 @@ from nornir_scrapli.tasks import (
 # veritas
 from veritas.inventory import veritasinventory
 from veritas.tools import tools
+from veritas.sot import sot as veritas_sot
 
 
 class Job(object):
@@ -21,6 +22,8 @@ class Job(object):
 
     Parameters
     ----------
+    sot : veritas_sot
+        the sot object to use to query the source of truth
     result : str
        format of the result
     username : str
@@ -36,8 +39,8 @@ class Job(object):
     logging : dict
         logging settings
     """
-    def __init__(self, sot, result:str='raw', username:str=None, password:str=None, port:int=22, data:dict={}, 
-                 use_primary:bool=True, logging:dict={"enabled": False}):
+    def __init__(self, sot:veritas_sot, result:str='raw', username:str=None, password:str=None, port:int=22, data:dict={}, 
+                 select=[], defaults={}, groups={}, use_primary:bool=True, logging:dict={"enabled": False}):
         
         # we use the veritas inventory plugin
         InventoryPluginRegister.register("veritas-inventory", veritasinventory.VeritasInventory)
@@ -48,13 +51,15 @@ class Job(object):
         self._on = None
         self._profile = None
         self._host_groups = []
-        self._groups = {}
+        self._groups = groups
         self._result = result
         self._username = username
         self._password = password
         self._port = port
         self._data = data
+        self._select = select
         self._user_primary = use_primary
+        self._defaults = defaults
         self._logging = logging
 
     def init_nornir(self, *unnamed, **named):
@@ -62,7 +67,7 @@ class Job(object):
         # run its own tasks
         properties = tools.convert_arguments_to_properties(unnamed, named)
         if not self._nornir:
-            self._init_nornir(properties)
+            self._init_nornir(**properties)
         return self._nornir 
 
     def __getattr__(self, item):
@@ -168,16 +173,28 @@ class Job(object):
 
     # -------- internal methods --------
 
-    def _init_nornir(self, data=None, host_groups=None, groups=None, logger=None, num_workers=100):
+    def _init_nornir(self, data=None, select=None, host_groups=None, groups=None,
+                     defaults={}, connection_options=None, num_workers=100):
 
         if self._nornir is not None:
             return 
-
         _data = data if data else self._data
+        _select = select if select else self._select
         _host_groups = host_groups if host_groups else self._host_groups
         _groups = groups if groups else self._groups
-        _logger = logger if logger else self._logging
         _worker = num_workers
+        _defaults = defaults if defaults else self._defaults
+
+        connection_opts = {
+            'default': {
+                'username': self._username,
+                'password': self._password,
+                'port': self._port
+            }
+        }
+        if connection_options:
+            connection_opts.update(connection_options)
+            logger.bind(extra="nornir").debug(f'connection options: {connection_opts}')
 
         self._nornir = InitNornir(
             runner={
@@ -188,24 +205,22 @@ class Job(object):
             },
             inventory={
                 'plugin': 'veritas-inventory',
+                # the next parameters are used by the veritas inventory plugin (init method)
                 "options": {
-                    'url': self._sot.nautobot_url,
-                    'ssl_verify': self._sot.ssl_verify,
-                    'token': self._sot.nautobot_token,
-                    'query': self._on,
+                    'sot': self._sot,
+                    'where': self._on,
                     'use_primary_ip': self._user_primary,
                     'username': self._username,
                     'password': self._password,
-                    'connection_options': {'default': {'username': self._username,
-                                                       'password': self._password,
-                                                       'port': self._port}
-                                        },
+                    'connection_options': connection_opts,
                     'data': _data,
+                    'select': _select,
                     'host_groups': _host_groups,
-                    'groups': _groups
-                },
+                    'defaults': _defaults,
+                    'groups': _groups,
+                }
             },
-            logging=self._logging,
+            logging=self._logging
         )
 
     def _getter(self, getter):
