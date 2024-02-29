@@ -16,7 +16,7 @@ class Plugin(object):
             logger.debug('Creating plugin object')
             cls._instance = super(Plugin, cls).__new__(cls)
             cls._registry = {'kobold': {},
-                             'orchestrator': {},
+                             'configmanagement': {},
                              'plugins': {}}
         return cls._instance
 
@@ -52,8 +52,8 @@ class Plugin(object):
         """
         return self._registry.get('kobold',{}).get(name)
     
-    def get_orchestrator_plugin(self, name:str) -> callable:
-        """return orchestrator plugin
+    def get_configmanagement_plugin(self, name:str) -> callable:
+        """return configmanagement plugin
 
         Parameters
         ----------
@@ -65,7 +65,7 @@ class Plugin(object):
         callable
             the method that is registered
         """
-        return self._registry.get('orchestrator',{}).get(name)
+        return self._registry.get('configmanagement',{}).get(name)
     
     def get_registry(self, app:str) -> dict:
         """return registry
@@ -100,6 +100,13 @@ class Plugin(object):
         self._registry[app][name] = method
 
 def kobold(name:str):
+    """decorator to register a kobold plugin
+
+    Parameters
+    ----------
+    name : str
+        name to be registered
+    """    
     def decorator(func):
         plugin = Plugin()
         logger.debug(f'registering {name} / {func}')
@@ -108,16 +115,30 @@ def kobold(name:str):
         return func
     return decorator
 
-def orchestrator(name:str):
+def configmanagement(name:str):
+    """register configmanagement plugin
+
+    Parameters
+    ----------
+    name : str
+        name to be registered
+    """    
     def decorator(func):
         plugin = Plugin()
         logger.debug(f'registering {name} / {func}')
-        plugin.add('orchestrator', name, func)
+        plugin.add('configmanagement', name, func)
         # return fn unmodified
         return func
     return decorator
 
 def register(name:str):
+    """register arbitary plugin
+
+    Parameters
+    ----------
+    name : str
+        name to be registered
+    """    
     def decorator(func):
         plugin = Plugin()
         logger.debug(f'registering {name} / {func}')

@@ -229,7 +229,6 @@ class VeritasInventory:
                     _data[ky] = device.get('custom_field_data',{}).get(ky)
                 else:
                     _data[key] = device.get(key)
-
             # add all keys to data
             for key in self.data.keys():
                 _data[key] = self.data.get(key)
