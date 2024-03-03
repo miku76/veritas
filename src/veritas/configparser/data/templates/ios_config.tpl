@@ -160,7 +160,8 @@ logging host {{host}}
 </group>
 
 <group name="management.ntp">
-ntp server {{ ip_address }}
+ntp server {{ ip_address | _start_ }} {{ prefer | let("prefer", True) }}
+ntp server {{ ip_address | _start_ }}
 </group>
 
 <group name="management.line.{{vty}}">
