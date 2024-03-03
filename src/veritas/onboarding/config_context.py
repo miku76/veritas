@@ -2,10 +2,7 @@ import yaml
 import json
 import os
 import glob
-import re
 from loguru import logger
-from collections import defaultdict
-from veritas.sot import sot as sot
 from ttp import ttp
 
 
@@ -80,11 +77,11 @@ def standard_config_context(device_fqdn, device_context, configparser, device_de
 
             # get the source. It is either a section or a (named) regular expression
             if 'section' in config['source']:
-                logger.debug(f'found section in config')
+                logger.debug('found section in config')
                 device_config_as_list = configparser.get_section(config['source']['section'])
                 device_config = "\n".join(device_config_as_list)
             elif 'fullconfig' in config['source']:
-                logger.debug(f'found fullconfig in config')
+                logger.debug('found fullconfig in config')
                 device_config = configparser.get()
             else:
                 logger.error("unknown source %s" % config['source'])
@@ -105,7 +102,7 @@ def stripper(data):
     for k, v in data.items():
         if isinstance(v, dict):
             v = stripper(v)
-        if not v in (u'', None, {}):
+        if v not in (u'', None, {}):
             new_data[k] = v
     return new_data
 
