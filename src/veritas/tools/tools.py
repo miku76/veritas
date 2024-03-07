@@ -59,7 +59,7 @@ def get_miniapp_config(appname:str, app_path:str, config_file:str=None, subdir:s
     elif os.path.exists(etc_config_file):
         filename = etc_config_file
     else:
-        logger.critical(f'neither {abs_path_config} nor {local_config_file} or {local_subdir_config_file} ' \
+        logger.critical(f'neither {abs_path_config} nor {homedir_config_file}, {local_config_file} or {local_subdir_config_file} ' \
                         f'or {etc_config_file} exist')
         return None
 

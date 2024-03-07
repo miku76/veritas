@@ -64,7 +64,17 @@ class Sot:
         self._job = None
         self._sot_config = {}
 
-        logger.enable("veritas.sot") if debug else logger.disable("veritas.sot")
+        if debug:
+            logger.enable("veritas.sot")
+            logger.enable("veritas.onboarding")
+            logger.enable("veritas.inventory")
+            logger.enable("veritas.profile")
+        else:
+            logger.disable("veritas.sot")
+            logger.disable("veritas.onboarding")
+            logger.disable("veritas.inventory")
+            logger.disable("veritas.profile")
+
         logger.debug('reading SOT config')
         package = f'{__name__.split(".")[0]}.sot.data.sot'
         with resources.open_text(package, 'config.yaml') as f:
