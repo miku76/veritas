@@ -24,9 +24,19 @@ class Rabbitmq():
 
         host = rabbitmq.get('host', '127.0.0.1')
         port = rabbitmq.get('port', '5672')
+        user = rabbitmq.get('user')
+        password = rabbitmq.get('password')
+        if user and password:
+            parameter = pika.ConnectionParameters(
+                host=host, 
+                port=port,
+                credentials=pika.PlainCredentials(user, password))
+        else:
+            parameter = pika.ConnectionParameters(
+                host=host, 
+                port=port)
 
-        self._connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=host, port=port))
+        self._connection = pika.BlockingConnection(parameter)
         self._channel = self._connection.channel()
         self._channel.exchange_declare(exchange='veritas_logs', exchange_type='topic')
 
