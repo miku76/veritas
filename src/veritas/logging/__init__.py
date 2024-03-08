@@ -24,7 +24,7 @@ def create_logger_environment(config, cfg_loglevel:str=None, cfg_loghandler:str=
     cfg_loglevel : str, optional
         the loglvel, by default None
     cfg_loghandler : str, optional
-        _description_, by default None
+        configured loghandler, by default None
     app : str, optional
         name of the app, by default None
     uuid : _type_, optional

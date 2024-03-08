@@ -16,6 +16,7 @@ class Plugin(object):
             logger.debug('Creating plugin object')
             cls._instance = super(Plugin, cls).__new__(cls)
             cls._registry = {'kobold': {},
+                             'jobschleuder': {},
                              'configmanagement': {},
                              'plugins': {}}
         return cls._instance
@@ -52,6 +53,21 @@ class Plugin(object):
         """
         return self._registry.get('kobold',{}).get(name)
     
+    def get_jobschleuder_plugin(self, name:str) -> callable:
+        """return jobschleuder plugin
+
+        Parameters
+        ----------
+        name : str
+            name of the registered plugin
+
+        Returns
+        -------
+        callable
+            the method that is registered
+        """
+        return self._registry.get('jobschleuder',{}).get(name)
+
     def get_configmanagement_plugin(self, name:str) -> callable:
         """return configmanagement plugin
 
@@ -111,6 +127,22 @@ def kobold(name:str):
         plugin = Plugin()
         logger.debug(f'registering {name} / {func}')
         plugin.add('kobold', name, func)
+        # return fn unmodified
+        return func
+    return decorator
+
+def jobschleuder(name:str):
+    """decorator to register a jobschleuder plugin
+
+    Parameters
+    ----------
+    name : str
+        name to be registered
+    """    
+    def decorator(func):
+        plugin = Plugin()
+        logger.debug(f'registering {name} / {func}')
+        plugin.add('jobschleuder', name, func)
         # return fn unmodified
         return func
     return decorator
