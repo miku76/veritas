@@ -42,6 +42,7 @@ class Devicemanagement(abstract_devicemanagement.AbstractDeviceManagement):
         try:
             self._connection.open()
             logger.debug('connection established')
+            return self._connection
         except ConnectionException as e:
             logger.error(f'Failed to connect to {self._ip_address} due to {type(e).__name__}')
     
