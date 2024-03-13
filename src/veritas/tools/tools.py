@@ -407,6 +407,9 @@ def get_date(date:str) -> str:
         day_num = today.strftime("%d")
         this_month = today - datetime.timedelta(days=int(day_num) - 1)
         return this_month.strftime("%Y-%m-%d 00:00:00")
+    elif date == 'this_year':
+        now = datetime.datetime.now()
+        return now.strftime("%Y-01-01 00:00:00")
     else:
         return None
 
