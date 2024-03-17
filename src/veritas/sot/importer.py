@@ -12,6 +12,7 @@ class Importer(object):
         self._endpoints = {'manufacturers': self._nautobot.dcim.manufacturers,
                            'platforms': self._nautobot.dcim.platforms,
                            'devices': self._nautobot.dcim.devices,
+                           'racks': self._nautobot.dcim.racks,
                            'roles': self._nautobot.extras.roles,
                            'prefixes': self._nautobot.ipam.prefixes,
                            'location_types': self._nautobot.dcim.location_types,
@@ -25,7 +26,8 @@ class Importer(object):
                            'device_types': self._nautobot.dcim.device_types,
                            'console_port_templates': self._nautobot.dcim.console_port_templates,
                            'power_port_templates': self._nautobot.dcim.power_port_templates,
-                           'device_bay_templates': self._nautobot.dcim.device_bay_templates,}
+                           'device_bay_templates': self._nautobot.dcim.device_bay_templates,
+                           }
 
     def __getattr__(self, item):
         if item == "xxx":
