@@ -51,10 +51,13 @@ class Selection(object):
         self._sot = sot
         self._using = set()
 
-        self._normalize = False
         self._node_id = 0
         self._cf_types = None
         self._transform = []
+
+        # set limit and offset to use pagination
+        self._limit = 0
+        self._offset = 0
 
         # everything we need to join two tables
         self._join = None
@@ -102,6 +105,31 @@ class Selection(object):
             logger.bind(extra="using").debug(f'using: {self._using} as {self._left_identifier}')
         else:
             self._using = self._left_table = self._left_identifier = schema
+        return self
+
+    def set(self, **kwargs) -> None:
+        """set
+
+        Parameters
+        ----------
+        **kwargs
+            named parameter that are used to set values
+
+        Returns
+        -------
+        obj : Selection
+            Selection
+
+        Notes
+        -----
+        - We implement a fluent syntax. This methods returns self
+        """
+        if 'limit' in kwargs:
+            self._limit = kwargs.get('limit')
+        if 'offset' in kwargs:
+            self._offset = kwargs.get('offset')
+
+        logger.bind(extra="set").trace(f'limit: {self._limit} offset: {self._offset}')
         return self
 
     def join(self, schema:str) -> None:
@@ -316,11 +344,11 @@ class Selection(object):
 
     # private methods
 
-    # GQL mode
-    # Querying using the GQL mode is simple. We just have to parse the expression and query the data
-
     def _parse_gql_query(self, expression:str, select:list, using:str) -> dict:
-        """parse GraphQL mode query"""
+        """parse GraphQL mode query
+
+        Querying using the GQL mode is simple. We just have to parse the expression and query the data
+        """
         return self._sot.get.query(
             select=select, 
             using=using, 
@@ -328,13 +356,12 @@ class Selection(object):
             mode='gql',
             transform=self._transform)
 
-    # SQL mode below
-    # Querying using the SQL mode is complex. We have to parse the expression and build a logical tree
-    # then we merge the values of the leafs (if possible) and query the tree
-    # Finally, we merge all the individual queries.
-
     def _parse_sql_query(self, expression:str, select:list, using:str) -> dict:
         """parse query and return result as dict
+
+        Querying using the SQL mode is more complex. We have to parse the expression and build a logical tree
+        then we merge the values of the leafs (if possible) and query the tree
+        Finally, we merge all the individual queries.
 
         Parameters
         ----------
@@ -426,7 +453,9 @@ class Selection(object):
             using=using, 
             where=where, 
             mode='sql', 
-            transform=self._transform)
+            transform=self._transform,
+            limit=self._limit,
+            offset=self._offset)
 
     def _build_logical_tree(self, res: dict) -> AnyNode:
         """parse logical expression and build tree"""

@@ -8,10 +8,18 @@ from veritas.tools import tools
 # these method are used to execute queries against the SOT and are private
 # they are used by the public methods in the getter.py
 
-def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: list=[]) -> dict:
+def _execute_sql_query(
+        getter_obj, 
+        select:str, 
+        using:str, 
+        where:str, 
+        transform: list=[],
+        limit:int = 0,
+        offset:int = 0) -> dict:
     """execute sql like query and return data"""
 
-    getter_obj._nautobot = getter_obj._sot.open_nautobot()
+    # we need the nautobot object to query the database
+    nb = getter_obj._sot.open_nautobot()
 
     subqueries = {'__interfaces_params__': [],
                   '__interface_assignments_params__': [],
@@ -48,7 +56,7 @@ def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: 
         # the syntax to use the subqueries is:
         # devices = sot.select('id, hostname, primary_ip4_for') \
         #              .using('nb.ipaddresses') \
-        #              .where('prefix="192.168.0.0/24" and pip4for_cf_net=eins')
+        #              .where('prefix="192.168.0.0/24" and pip4for_cf_net=name_of_net')
         if whr.startswith('interfaces_'):
             subqueries['__interfaces_params__'].append(f'{whr.replace("interfaces_","")}: ${whr}')
         elif whr.startswith('pip4for_'):
@@ -56,6 +64,8 @@ def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: 
         elif whr.startswith('assignments_'):
             subqueries['__interface_assignments_params__'].append(f'{whr.replace("assignments_","")}: ${whr}')
         else:
+            # we use the 'using' string to identify the main query
+            # eg. using(nb.devices) will be used to query the devices __devices_params__
             sq = f'__{using.replace("nb.","")}_params__'
             subqueries[sq].append(f'{whr}: ${whr}')
 
@@ -64,6 +74,18 @@ def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: 
         if isinstance(where[whr], list) and name in query_final_vars:
             logger.debug(f'convert {whr} to String')
             where[whr] = where[whr][0]
+
+    if using in ['nb.devices', 'nb.ipaddresses', 'nb.vlans', 'nb.prefixes', 'nb.general', 'nb.changes', 'nb.vms']:
+        # some queries have a limit and offset parameter
+        # the limit and offset value is set in the 'where' dictionary
+        # we have to add limit and/or offset to the list of query variables
+        sq = f'__{using.replace("nb.","")}_params__'
+        if limit > 0:
+            subqueries[sq].append('limit: $limit')
+            query_final_vars.append('$limit: Int')
+        if offset > 0:
+            subqueries[sq].append('offset: $offset')
+            query_final_vars.append('$offset: Int')
 
     # convert string ["val1","val2",....,"valn"] to list
     for key,val in dict(where).items():
@@ -91,13 +113,20 @@ def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: 
     # cleanup
     query = query.replace('{}','').replace('()','')
 
-    # select are values the user has SELECTed
+    # 'select' are values the user has SELECTed
+    # we have to set the variables to True to get the value
     for v in select:
         if v.startswith('cf_'):
             where['get_custom_field_data'] = True
         else:
             # we may have a . in our select values eg. platform.name
             where[f'get_{v.split(".")[0]}'] = True
+
+    # set limit and offset if needed
+    if limit > 0:
+        where['limit'] = limit
+    if offset > 0:
+        where['offset'] = offset
 
     # debugging output
     logger.bind(extra="query").trace('--- query_vars ---')
@@ -115,7 +144,7 @@ def _execute_sql_query(getter_obj, select:str, using:str, where:str, transform: 
     response = None
     logger.debug(f'select={select} using={using} where={where}')
     with logger.catch():
-        response = getter_obj._nautobot.graphql.query(query=query, variables=where).json
+        response = nb.graphql.query(query=query, variables=where).json
     if not response:
         logger.error('got no valid response')
         return {}

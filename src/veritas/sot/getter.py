@@ -356,7 +356,15 @@ class Getter(object):
                     response[loc.name] = row
             return response
 
-    def query(self, select:list, using:str, where:str, mode:str='sql', transform:list=[]) -> dict:
+    def query(
+            self, 
+            select:list, 
+            using:str, 
+            where:str, 
+            mode:str='sql', 
+            transform:list=[],
+            limit: int=0,
+            offset: int=0) -> dict:
         """query nautobot
 
         Parameters
@@ -371,6 +379,10 @@ class Getter(object):
             either sql or gql (graphql), by default 'sql'
         transform : list, optional
             list of transformations, by default []
+        limit : int, optional
+            the number of items to get
+        offset : int, optional
+            the offset, by default 0
 
         Returns
         -------
@@ -382,7 +394,14 @@ class Getter(object):
         """        
         logger.bind(extra="query").debug(f'query select {select} using {using} where {where} (query)')
         if mode == "sql":
-            return queries._execute_sql_query(self, select=select, using=using, where=where, transform=transform)
+            return queries._execute_sql_query(
+                self, 
+                select=select, 
+                using=using, 
+                where=where, 
+                transform=transform,
+                limit=limit,
+                offset=offset)
         else:
             return queries._execute_gql_query(self, select=select, using=using, where=where)
 
