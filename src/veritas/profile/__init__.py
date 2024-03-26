@@ -90,6 +90,17 @@ class Profile(object):
         return self._password
     
     @property
+    def ssh_keyfile(self) -> str:
+        """return ssh_key
+
+        Returns
+        -------
+        ssh_key : str
+            the ssh_key
+        """        
+        return self._ssh_key
+
+    @property
     def ssh_key(self) -> str:
         """return ssh_key
 
