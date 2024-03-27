@@ -21,7 +21,7 @@ class Checkmk:
         checkmk password
     
     """
-    def __init__(self, sot:sot.Sot, url:str, site:str, username:str, password:str):
+    def __init__(self, sot:sot.sot, url:str, site:str, username:str, password:str):
         self._sot = sot
         self._url = url
         self._site = site
