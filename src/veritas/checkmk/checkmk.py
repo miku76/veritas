@@ -1,8 +1,9 @@
-import logging
+from loguru import logger
 import requests
 
 # veritas
 from veritas import sot
+
 
 class Checkmk:
     """Checkmk class to interact with checkmk server
@@ -34,11 +35,11 @@ class Checkmk:
 
     def _start_session(self) -> None:
         """start session with checkmk server"""
-        logging.debug(f'starting checkmk session on {self._api_url}')
+        logger.debug(f'starting checkmk session on {self._api_url}')
 
         # baseurl http://hostname/site/check_mk/api/1.0
         api_url = f'{self._url}/{self._site}/check_mk/api/1.0'
-        logging.debug(f'starting session for {self._username} on {api_url}')
+        logger.debug(f'starting session for {self._username} on {api_url}')
         self._checkmk = self._sot.rest(url=api_url, 
                                        username=self._username,
                                        password=self._password)
@@ -54,7 +55,7 @@ class Checkmk:
                                      params={"effective_attributes": False, },
                                      format='object')
         if response.status_code != 200:
-            logging.error(f'got status code {response.status_code}; giving up')
+            logger.error(f'got status code {response.status_code}; giving up')
             return []
         devices = response.json().get('value')
         for device in devices:
@@ -116,13 +117,13 @@ class Checkmk:
                                   params=params)
         status = host.status_code
         if status == 200:
-            logging.debug('host added to check_mk')
+            logger.debug('host added to check_mk')
             return True
         elif status == 500:
-            logging.error(f'got status {status}; maybe host is already in check_mk')
+            logger.error(f'got status {status}; maybe host is already in check_mk')
             return False
         else:
-            logging.error(f'got status {status}; error: {host.content}')
+            logger.error(f'got status {status}; error: {host.content}')
             return False
 
     def activate_all_changes(self) -> bool:
@@ -133,10 +134,10 @@ class Checkmk:
         bool
             success or failure
         """
-        logging.debug('activating all changes')
+        logger.debug('activating all changes')
         response = self._activate_etag(self._check_mk, '*',[ self._site ])
         if response.status_code not in {200, 412}:
-            logging.error(f'got status {response.status_code} could not activate changes; error: {response.content}')
+            logger.error(f'got status {response.status_code} could not activate changes; error: {response.content}')
             return False
         return True
 
@@ -189,16 +190,17 @@ class Checkmk:
             "If-Match": etag,
             "Content-Type": 'application/json',
         }
-        logging.debug(f'sending request {data} {headers}')
+
+        logger.debug(f'sending request {data} {headers}')
         response = self._checkmk.post(url=f"/objects/host_config/{hostname}/actions/move/invoke", 
                                        json=data,
                                        headers=headers)
         status = response.status_code
         if status == 200:
-            logging.debug('moved successfully')
+            logger.debug('moved successfully')
             return True
         else:
-            logging.error(f'status {status}; error: {response.content}')
+            logger.error(f'status {status}; error: {response.content}')
             return False
 
     def update_host_in_cmk(self, hostname:str, etag:str, update_attributes:bool, remove_attributes:bool) -> bool:
@@ -220,7 +222,7 @@ class Checkmk:
         bool
             success or failure
         """        
-        logging.debug(f'updating host {hostname}')
+        logger.debug(f'updating host {hostname}')
         data = {}
         if update_attributes:
             data.update({"update_attributes": update_attributes})
@@ -228,22 +230,22 @@ class Checkmk:
             data.update({"remove_attributes": remove_attributes})
 
         if len(data) == 0:
-            logging.error(f'no update of {hostname} needed but update_host_in_cmk called')
+            logger.error(f'no update of {hostname} needed but update_host_in_cmk called')
             return
 
         headers={
             "If-Match": etag,
             "Content-Type": 'application/json',
         }
-        logging.debug(f'sending request {data} {headers}')
+        logger.debug(f'sending request {data} {headers}')
         response = self._checkmk.put(url=f"/objects/host_config/{hostname}", 
                                      json=data,
                                      headers=headers)
         if response.status_code == 200:
-            logging.debug('updated successfully')
+            logger.debug('updated successfully')
             return True
         else:
-            logging.error(f'status {response.status_code}; error: {response.content}')
+            logger.error(f'status {response.status_code}; error: {response.content}')
             return False
 
     def delete_hosts(self, devices:list) -> bool:
@@ -265,10 +267,10 @@ class Checkmk:
 
         response = self._checkmk.post(url="/domain-types/host_config/actions/bulk-delete/invoke", json={'entries': data})
         if response.status_code == 200 or response.status_code == 204 :
-            logging.debug(f'hosts {data} successfully deleted')
+            logger.debug(f'hosts {data} successfully deleted')
             return True
         else:
-            logging.error(f'error removing hosts; status {response.status_code}; error: {response.content}')
+            logger.error(f'error removing hosts; status {response.status_code}; error: {response.content}')
             return False
 
     def repair_services(self) -> bool:
@@ -289,7 +291,7 @@ class Checkmk:
             }
             response = self._checkmk.get(url=f"/objects/host/{hostname}/collections/services", params=params)
             if response.status_code == 200 and len(response.json()['value']) <= 2:
-                logging.info(f'host {hostname} has only {len(response.json()["value"])} services')
+                logger.info(f'host {hostname} has only {len(response.json()["value"])} services')
                 hosts_with_no_services.append({'host_name': hostname})
         
         if len(hosts_with_no_services) > 0:
@@ -308,20 +310,20 @@ class Checkmk:
         bool
             success or failure
         """        
-        logging.debug('starting Host discovery')
+        logger.debug('starting Host discovery')
         for device in devices:
             hostname = device.get('host_name')
-            logging.info(f'starting discovery on {hostname}')
+            logger.info(f'starting discovery on {hostname}')
             # in cmk 2.2 you can add: 'do_full_scan': True,
             data = {'host_name': hostname, 
                     'mode': 'fix_all'}
             response = self._checkmk.post(url="/domain-types/service_discovery_run/actions/start/invoke", json=data)
             status = response.status_code
             if status == 200:
-                logging.debug('started successfully')
+                logger.debug('started successfully')
                 return True
             else:
-                logging.error(f'status {status}; error: {response.content}')
+                logger.error(f'status {status}; error: {response.content}')
                 return False
 
     def update_folders(self, devices:list, default_config:dict=None) -> bool:
@@ -344,18 +346,18 @@ class Checkmk:
             response = self._checkmk.get(url=f"/objects/folder_config/{fldrs}")
             status = response.status_code
             if status == 200:
-                logging.debug(f'{fldrs} found in check_mk')
+                logger.debug(f'{fldrs} found in check_mk')
             elif status == 404:
                 # one or more parent folders are missing
                 # we have to check the complete path
-                logging.debug(f'{fldrs} does not exist; creating it')
+                logger.debug(f'{fldrs} does not exist; creating it')
                 path = fldrs.split('~')
                 for i in range(1, len(path)):
                     pth = '~'.join(path[1:i])
-                    logging.debug(f'checking if ~{pth} exists')
+                    logger.debug(f'checking if ~{pth} exists')
                     response = self._checkmk.get(url=f"/objects/folder_config/~{pth}")
                     if response.status_code == 404:
-                        logging.debug(f'{pth} does not exists')
+                        logger.debug(f'{pth} does not exists')
                         i = pth.rfind('~')
                         name = pth[i+1:]
                         if i == -1:
@@ -368,12 +370,12 @@ class Checkmk:
                         folder_config = self.get_folder_config(default_config, name)
                         if folder_config is not None:
                             data.update({'attributes': folder_config})
-                        logging.debug(f'creating folder {name} in {parent}')
+                        logger.debug(f'creating folder {name} in {parent}')
                         response = self._checkmk.post(url="/domain-types/folder_config/collections/all", json=data)
                         if response.status_code == 200:
-                            logging.debug(f'folder {name} added in {parent}')
+                            logger.debug(f'folder {name} added in {parent}')
                         else:
-                            logging.error(f'could not add folder; error: {response.content}')
+                            logger.error(f'could not add folder; error: {response.content}')
                 # now we have the path upto our folder
                 i = fldrs.rfind('~')
                 name = fldrs[i+1:]
@@ -381,7 +383,7 @@ class Checkmk:
                     parent = "~"
                 else:
                     parent = fldrs[0:i]
-                logging.debug(f'creating folder {name} in {parent}')
+                logger.debug(f'creating folder {name} in {parent}')
                 data = {"name": name, 
                         "title": name, 
                         "parent": parent }
@@ -390,13 +392,13 @@ class Checkmk:
                             data.update({'attributes': folder_config})
                 response = self._checkmk.post(url="/domain-types/folder_config/collections/all", json=data)
                 if response.status_code == 200:
-                    logging.debug(f'folder {name} added in {parent}')
+                    logger.debug(f'folder {name} added in {parent}')
                     return True
                 else:
-                    logging.error(f'could not add folder; error: {response.content}')
+                    logger.error(f'could not add folder; error: {response.content}')
                     return False
             else:
-                logging.debug(f'got status: {status}')
+                logger.debug(f'got status: {status}')
                 return False
 
     def get_folder_config(self, folders_config:dict, folder_name:str) -> dict:
@@ -450,19 +452,14 @@ class Checkmk:
         folder_config = self.get_folder_config(default_config, name)
         if folder_config is not None:
             data.update({'attributes': folder_config})
-        logging.debug(f'creating folder {name} in {parent}')
+        logger.debug(f'creating folder {name} in {parent}')
         response = self._checkmk.post(url="/domain-types/folder_config/collections/all", json=data)
         if response.status_code == 200:
-            logging.info(f'folder {name} added in {parent}')
+            logger.info(f'folder {name} added in {parent}')
             return True
         else:
-            logging.error(f'could not add folder; error: {response.content}')
-            if response.status_code == 200:
-                logging.info(f'folder {name} added in {parent}')
-                return True
-            else:
-                logging.error(f'could not add folder; error: {response.content}')
-                return False
+            logger.error(f'could not add folder; error: {response.content}')
+            return False
 
     def add_config(self, config:dict, url:str) -> bool:
         """add config to checkmk
@@ -481,10 +478,10 @@ class Checkmk:
         """        
         response = self._checkmk.post(url=url, json=config)
         if response.status_code == 200:
-            logging.info('adding config successfully')
+            logger.info('adding config successfully')
             return True
         else:
-            logging.error(f'adding config failed; error: {response.content}')
+            logger.error(f'adding config failed; error: {response.content}')
             return False
 
     def get(self, url:str, params:dict=None, format:str=None) -> requests.Response:
@@ -504,7 +501,7 @@ class Checkmk:
         requests.Response
             _description_
         """        
-        logging.debug(f'getting url:{url} params:{params} format:{format}')
+        logger.debug(f'getting url:{url} params:{params} format:{format}')
         if url and params and format:
             return self._checkmk.get(url=url,
                                      params=params,
