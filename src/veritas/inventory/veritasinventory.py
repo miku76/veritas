@@ -190,9 +190,6 @@ class VeritasInventory:
         hosts = Hosts()
         groups = Groups()
 
-        # the additional select values must be a list
-        if isinstance(self.select,str):
-            self.select = [self.select]
         # if the user wants 'data' or groups we have to add those fields to our select list
         select = ['hostname', 'primary_ip4', 'platform'] + self.select
         logger.bind(extra="inventory").debug(f'select: {select}')

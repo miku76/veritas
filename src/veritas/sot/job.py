@@ -119,6 +119,28 @@ class Job(object):
             dict of connection options, by default None
         num_workers : int, optional
             number of nornir workers, by default 10
+        
+        Notes
+        -----
+        The format to use connection_options is:
+        {'napalm': {
+          'extra': {
+            'optional_args': {
+              'conn_timeout':60,
+            }
+          }
+         },
+         'netmiko': {
+           'extra': {
+             'conn_timeout': 5,
+             'auth_timeout': None,  # Timeout to wait for authentication response
+             'banner_timeout': 15,  # Timeout to wait for the banner to be presented (post TCP-connect)
+             'blocking_timeout':20, # Read blocking timeout
+             'timeout':100,         # TCP connect timeout | overloaded to read-loop timeout
+             'session_timeout': 60  # Used for locking/sharing the connection
+           }
+         }
+        }
         """
         _data = data if data else self._data
         _select = select if select else self._select
@@ -126,6 +148,10 @@ class Job(object):
         _groups = groups if groups else self._groups
         _worker = num_workers
         _defaults = defaults if defaults else self._defaults
+
+        # the inventory needs a list
+        if isinstance(_select, str):
+            _select = _select.replace(' ','').split(',')
 
         connection_opts = {
             'default': {
