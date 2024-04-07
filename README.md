@@ -7,7 +7,7 @@ The library consists of several parts. On the one hand, complex queries can be m
 veritas is in a very “early” stage and can only be described as experimental. However, the migration of our legacy system was successfully completed with this library and the associated toolkit.
 In order to enable others to migrate their system, we have decided to publish the library and the toolkit.
 
-veritas and its toolkit works pretty fine a a CISCO environment. If you have another manufacturer
+veritas and its toolkit works pretty fine in a CISCO environment. If you have another manufacturer
 you have to modify some parts of the lib.
 
 And as always: Use at your own risk!
