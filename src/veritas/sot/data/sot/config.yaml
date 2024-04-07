@@ -265,7 +265,8 @@ queries:
       $get_device_id: Boolean = false, 
       $get_interfaces: Boolean = false,
       $get_local_config_context_data: Boolean = false,
-      $get_location: Boolean = false, 
+      $get_location: Boolean = false,
+      $get_location_parent: Boolean = false,
       $get_name: Boolean = false,
       $get_parent_bay: Boolean = false,
       $get_primary_ip4: Boolean = false, 
@@ -379,6 +380,16 @@ queries:
           {
             id @include(if: $get_id)
             name
+          }
+          parent @include(if: $get_location_parent)
+          {
+            id @include(if: $get_id)
+            name
+            location_type
+            {
+              id @include(if: $get_id)
+              name
+            }
           }
         }
         status @include(if: $get_status) 
