@@ -237,10 +237,11 @@ class Sot:
         >>> nautobot = sot.open_nautobot()
         """
         if self._nautobot is None:
-            api_version = self._sot_config.get('api_version','2.0')
+            api_version = self._sot_config.get('api_version', '2.0')
             ssl_verify = self._sot_config['ssl_verify']
-            logger.debug(f'nautobot api object created; api_version={api_version} ssl_verify={ssl_verify}')
-            self._nautobot = api(self._sot_config['nautobot_url'], 
+            logger.trace(f'url={self._sot_config["nautobot_url"]} token={self._sot_config["nautobot_token"]}')
+            logger.debug(f'creating nautobot api object; api_version={api_version} ssl_verify={ssl_verify}')
+            self._nautobot = api(url=self._sot_config['nautobot_url'], 
                                  token=self._sot_config['nautobot_token'], 
                                  api_version=api_version,
                                  verify=ssl_verify)
