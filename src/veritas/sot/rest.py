@@ -24,7 +24,7 @@ class Rest(object):
         verify ssl
     """
     def __init__(self, sot, authentication='bearer', username=None, password=None, 
-                 token=None, url=None, verify_ssl=True):
+                 token=None, url=None, verify_ssl=True, debug=False):
         self._sot = sot
         self._authentication = authentication
         self._username = username

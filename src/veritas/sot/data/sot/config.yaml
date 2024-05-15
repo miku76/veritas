@@ -546,6 +546,7 @@ queries:
       $get_cf: Boolean = false,
       $get_custom_field_data: Boolean = false,
       $get__custom_field_data: Boolean = false,
+      $get_custom_fields: Boolean = false,
       $get_description: Boolean = false,
       $get_device_type: Boolean = false, 
       $get_dns_name: Boolean = false,
@@ -704,6 +705,7 @@ queries:
           _custom_field_data @include(if: $get_cf)
           _custom_field_data @include(if: $get__custom_field_data)
           custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
+          custom_fields : _custom_field_data @include(if: $get_custom_fields)
           primary_ip4 @include(if: $get_primary_ip4) 
           {
             id @include(if: $get_id)
