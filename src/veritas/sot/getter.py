@@ -75,6 +75,24 @@ class Getter(object):
                 return self._nautobot.dcim.devices.get(name=device)
         return None
 
+    def device_by_serial(self, serial_number) -> models.dcim.Devices | str:
+        """get device by using an a serial number
+
+        Parameters
+        ----------
+        serial_number: 
+            the serial number to look up
+
+        Returns
+        -------
+        device : Endpoint
+            Endpoint of the device or None
+        """        
+        return self.query(select=['name'], 
+                          using='nb.devices',
+                          where={'serial': serial_number}, 
+                          mode='sql')
+    
     def primary_ip4(self, name:str, cast:bool=False) -> models.ipam.IpAddresses | str:
         """get primary IP4 of the device
 
