@@ -46,15 +46,12 @@ class Onboarding():
 
     def _load_module(self, name, package, subpackage):
         current_dir = pathlib.Path(__file__).parent.resolve()
-        try:
-            spec = importlib.util.spec_from_file_location(name, f'{current_dir}/{package}/{subpackage}.py')
-            module = importlib.util.module_from_spec(spec)
-            sys.modules[subpackage] = module
-            spec.loader.exec_module(module)
-            return True
-        except Exception as exc:
-            logger.critical(f'failed to import plugin {current_dir}/{package}/{subpackage}.py; got exception {exc}')
-            return False
+
+        spec = importlib.util.spec_from_file_location(name, f'{current_dir}/{package}/{subpackage}.py')
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[subpackage] = module
+        spec.loader.exec_module(module)
+        return True
 
     def parse_config(self, device_config, device_facts, device_defaults):
         """parse config and save device_config, device_facst and device_defaults for later use"""
@@ -208,11 +205,7 @@ class Onboarding():
         column_mapping, value_mapping = self.read_mapping()
 
         with open(inventory) as f:
-            try:
-                table = yaml.safe_load(f.read())
-            except Exception as exc:
-                logger.error(f'could not read or parse config; got execption {exc}')
-                return []
+            table = yaml.safe_load(f.read())
 
         for row in table.get('inventory', []):
             d = {}
@@ -329,14 +322,10 @@ class Onboarding():
         facts_filename = "./%s/%s.facts" % (directory, hostname.lower())
         logger.debug(f'reading config from {config_filename} and facts from {facts_filename}')
 
-        try:
-            with open(config_filename, 'r') as f:
-                device_config = f.read()
-            with open(facts_filename, 'r') as f:
-                device_facts = json.load(f)
-        except Exception as exc:
-            logger.error(f'failed to import config or facts {exc}', exc_info=True)
-            return None, None
+        with open(config_filename, 'r') as f:
+            device_config = f.read()
+        with open(facts_filename, 'r') as f:
+            device_facts = json.load(f)
 
         return device_config, device_facts
 
@@ -384,7 +373,7 @@ class Onboarding():
             raise Exception('could not load defaults')
 
         # read the default values from our YAML file
-        # the default values are wvery important. Using this values you
+        # the default values are very important. Using this values you
         # can easily import dozens of devices. To achieve this use default
         # values like 'unknown' or 'default-location'. After adding the devices
         # use the kobold script to modify tags, custom fields or mandatory
@@ -413,6 +402,11 @@ class Onboarding():
 
         logger.debug(f'address {ip} belongs to {device_in_nb}')
         return device_in_nb
+
+    def check_serial(self, serial_number):
+        """check if seerial number is already in sot"""
+
+        return self._sot.get.device_by_serial(serial_number=serial_number)
 
     def extend_device_properties(self, properties):
         """ we have to modify some attributes like device_type and role
