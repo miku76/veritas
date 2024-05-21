@@ -557,6 +557,10 @@ class Onboarding:
         device : nautobot.dcim.devices
             nautobot.dcim.devices or None if not successfull
 
+        Raises:
+            error when adding device to nautobot
+            the exception is forwarded from pynautobot to the app
+
         """
         try:
             device_name = device_properties.get('name')
@@ -568,14 +572,11 @@ class Onboarding:
                 return None
             return device
         except Exception as exc:
-            if 'A device with this name already exists' in str(exc):
+            if 'A device with this name already exists' in str(exc) and self._use_device_if_already_exists:
                 logger.debug('a device with this name already exists')
-                if self._use_device_if_already_exists:
-                    return self._nautobot.dcim.devices.get(name=device_name)
+                return self._nautobot.dcim.devices.get(name=device_name)
             else:
-                logger.error(f'properties: {device_properties}')
-                logger.error(exc)
-        return None 
+                raise exc
 
     def _add_vlans_to_nautobot(self):
         """private method to add vlans to nautobot
@@ -598,11 +599,7 @@ class Onboarding:
                 logger.debug(f'vlan vid={vid} location={location} found in nautobot')
             else:
                 new_vlans.append(vlan)
-        try:
-            return self._nautobot.ipam.vlans.create(new_vlans)
-        except Exception as exc:
-            logger.error(exc)
-        return False
+        return self._nautobot.ipam.vlans.create(new_vlans)
 
     def _add_interfaces_to_nautobot(self, device, interfaces:list, debug_msg=''):
         """private method to add interfaces to nautobot
@@ -627,26 +624,12 @@ class Onboarding:
             if 'lag' in interface:
                 interface['lag']['device'] = device.id
         if self._bulk:
-            try:
-                return self._nautobot.dcim.interfaces.create(interfaces)
-            except Exception as exc:
-                if 'The fields device, name must make a unique set' in str(exc):
-                    logger.error('one or more interfaces were already in nautobot')
-                else:
-                    logger.error(f'got exception: {exc}')
-                    logger.debug(f'failed interfaces: {interfaces}')
-                return False
+            return self._nautobot.dcim.interfaces.create(interfaces)
         else:
             for interface in interfaces:
-                success = True
-                try:
-                    # if one request failes we return False
-                    success = success and self._nautobot.dcim.interfaces.create(interface)
-                except Exception as exc:
-                    if 'The fields device, name must make a unique set' in str(exc):
-                        logger.error('this interfaces is already in nautobot')
-                    success = False
-            return success
+                self._nautobot.dcim.interfaces.create(interface)
+
+            return True
 
     def _add_prefix_to_nautobot(self, ip_addresses:list) -> list:
         """private method to add prefixes to nautobot
@@ -673,11 +656,7 @@ class Onboarding:
                 'namespace': parent.get('namespace',{}).get('name'),
                 'status': {'name': 'Active'}
             }
-            try:
-                added_prefixe.append(self._nautobot.ipam.prefixes.create(properties))
-            except Exception as exc:
-                logger.error(f'could not add prefix to nautobot; got {exc}')
-
+            added_prefixe.append(self._nautobot.ipam.prefixes.create(properties))
         return added_prefixe
 
     def _add_ipaddress_to_nautbot(self, device, addresses:list) -> list:
@@ -796,9 +775,5 @@ class Onboarding:
                 ip_address=ip.id)
             response = True
             for assignment in id_list:
-                try:
-                    assignment.delete()
-                except Exception as exc:
-                    logger.error(f'failed to delete assignment; got exception {exc}')
-                    response = False
+                assignment.delete()
         return response
