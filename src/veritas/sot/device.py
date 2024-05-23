@@ -2,6 +2,7 @@ from loguru import logger
 
 # veritas
 from veritas.tools import tools
+from veritas.tools import exceptions as veritas_exceptions
 
 class Device:
     """Device class to interact with nautobot to update devices and interfaces
@@ -23,6 +24,17 @@ class Device:
         self._nautobot = self._sot.open_nautobot()
 
     def interface(self, interface_name:str) -> None:
+        """set interface name
+
+        Parameters
+        ----------
+        interface_name : str
+            name of interface
+
+        Returns
+        -------
+        None
+        """        
         self._interface = interface_name
         return self
 
@@ -44,17 +56,26 @@ class Device:
 
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
         if self._interface:
+            logger.debug(f'updating interface {self._device} / {self._interface}')
             return self.update_interface(properties)
 
-        logger.debug(f'update device {self._device}')
+        logger.debug(f'updating device {self._device}')
         device = self._nautobot.dcim.devices.get(name=self._device)
         if device:
-            update = device.update(properties)
-            logger.debug(f'update device result={update}')
-            return update
+            try:
+                update = device.update(properties)
+                logger.debug(f'device updated result={update}')
+                return update
+            except Exception as exc:
+                logger.error(f'failed to update device {self._device}; exc={exc}')
+                raise veritas_exceptions.UpdateDeviceError(
+                    f'failed to update device {self._device}; exception={exc}',
+                    additional_info=f'properties {properties}')
         else:
             logger.error(f'device {self._device} not found')
-            return False        
+            raise veritas_exceptions.UnknownDeviceError(
+                f'device {self._device} not found',
+                additional_info=f'properties {properties}')
 
     def update_interface(self, properties:dict) -> bool:
         """update interface
@@ -75,13 +96,65 @@ class Device:
 
         if not interface:
             logger.error(f'unknown interface {self._interface} on {self._device}')
-            return False
-
+            raise veritas_exceptions.UnknownInterfaceError(
+                f'interface {self._interface} not found',
+                additional_info=f'properties {properties}')
         try:
             return interface.update(properties)
         except Exception as exc:
-            logger.error(f'could not update interface; got exception {exc}')
-            return False
+            logger.error(f'failed to update interface; got exception {exc}')
+            raise veritas_exceptions.UpdateInterfaceError(
+                    f'failed to update interface {self._device} / {self._interface}; exception={exc}',
+                    additional_info=f'properties {properties}')
+
+    def delete(self) -> bool:
+        """delete device or interface
+        """
+        if self._interface:
+            logger.debug(f'deleteing interface {self._device} / {self._interface}')
+            return self.delete_interface()
+
+        logger.debug(f'deleting device {self._device}')
+        device = self._nautobot.dcim.devices.get(name=self._device)
+        if device:
+            try:
+                delete = device.delete()
+                logger.debug(f'device deleted result={delete}')
+                return delete
+            except Exception as exc:
+                logger.error(f'failed to delete device {self._device}; exc={exc}')
+                raise veritas_exceptions.DeleteDeviceError(
+                    f'failed to delete device {self._device}; exception={exc}')
+        else:
+            logger.error(f'device {self._device} not found')
+            raise veritas_exceptions.UnknownDeviceError(
+                f'device {self._device} not found')
+
+    def delete_interface(self) -> bool:
+        """delete interface
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """        
+        interface = self._nautobot.dcim.interfaces.get(
+                    device=[self._device],
+                    name=self._interface)
+
+        if not interface:
+            logger.error(f'unknown interface {self._interface} on {self._device}')
+            raise veritas_exceptions.UnknownInterfaceError(
+                f'interface {self._interface} not found')
+        try:
+            return interface.delete()
+        except Exception as exc:
+            logger.error(f'failed to delete interface; got exception {exc}')
+            raise veritas_exceptions.DeleteInterfaceError(
+                    f'failed to delete interface {self._device} / {self._interface}; exception={exc}')
 
     def set_tags(self, new_tags:list) -> bool:
         """set tags of device or interface
@@ -208,7 +281,9 @@ class Device:
 
         if not interface:
             logger.error(f'unknown interface {self._interface} on {self._device}')
-            return False
+            raise veritas_exceptions.UnknownInterfaceError(
+                f'interface {self._interface} not found',
+                additional_info=f'new_tags={new_tags} set_tag={set_tag}')
 
         if not set_tag:
             for tag in interface.tags:
@@ -232,8 +307,10 @@ class Device:
             try:
                 return interface.update(properties)
             except Exception as exc:
-                logger.error(f'could not update interface; got exception {exc}')
-                return False
+                logger.error(f'failed to update interface; got exception {exc}')
+                raise veritas_exceptions.UpdateInterfaceError(
+                        f'failed to update interface {self._device} / {self._interface}; exception={exc}',
+                        additional_info=f'new_tags={new_tags} set_tag={set_tag}')
 
     def delete_interface_tags(self, tags_to_delete:list) -> bool:
         """delete interface tags
@@ -256,7 +333,9 @@ class Device:
 
         if not interface:
             logger.error(f'unknown interface {self._interface} on {self._device}')
-            return False
+            raise veritas_exceptions.UnknownInterfaceError(
+                f'interface {self._interface} not found',
+                additional_info=f'tags_to_delete={tags_to_delete}')
 
         interface_tags = []
         current_tags = []
@@ -272,8 +351,10 @@ class Device:
         try:
             return interface.update(properties)
         except Exception as exc:
-            logger.error(f'could not delete tags on interface; got exception {exc}')
-            return False
+            logger.error(f'failed to delete tag; got exception {exc}')
+            raise veritas_exceptions.UpdateInterfaceError(
+                    f'failed to update interface {self._device} / {self._interface}; exception={exc}',
+                    additional_info=f'tags_to_delete={tags_to_delete}')
 
     def set_customfield(self, properties:dict) -> bool:
         """set customfield on device or interface
@@ -292,14 +373,26 @@ class Device:
             return self.set_interface_customfield(properties)
 
         device = self._nautobot.dcim.devices.get(name=self._device)
-        if device is None:
-            logger.error(f'unknown device {self._device_name}')
-            return False
-    
-        return device.update(properties)
+        if device:
+            try:
+                update = device.update(properties)
+                logger.debug(f'device updated result={update}')
+                return update
+            except Exception as exc:
+                logger.error(f'failed to update device {self._device}; exc={exc}')
+                raise veritas_exceptions.UpdateDeviceError(
+                    f'failed to update device {self._device}; exception={exc}',
+                    additional_info=f'properties {properties}')
+        else:
+            logger.error(f'device {self._device} not found')
+            raise veritas_exceptions.UnknownDeviceError(
+                f'device {self._device} not found',
+                additional_info=f'properties {properties}')
 
     def set_interface_customfield(self, properties:dict) -> bool:
         """set interface customfield
+
+        todo: call update_interface to update customfield
 
         Parameters
         ----------
@@ -317,9 +410,13 @@ class Device:
 
         if not interface:
             logger.error(f'unknown interface {self._interface} on {self._device}')
-            return False
+            raise veritas_exceptions.UnknownInterfaceError(
+                f'interface {self._interface} not found',
+                additional_info=f'properties {properties}')
         try:
             return interface.update(properties)
         except Exception as exc:
-            logger.error(f'could not update interface; got exception {exc}')
-            return False
+            logger.error(f'failed to update interface; got exception {exc}')
+            raise veritas_exceptions.UpdateInterfaceError(
+                    f'failed to update interface {self._device} / {self._interface}; exception={exc}',
+                    additional_info=f'properties {properties}')
