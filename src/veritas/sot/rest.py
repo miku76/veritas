@@ -162,3 +162,25 @@ class Rest(object):
                 properties['headers'] = self._headers
 
         return self._session.patch(**properties)
+
+    def delete(self, *unnamed:tuple, **named:dict) -> requests.Response:
+        """make a DELETE request
+
+        Returns
+        -------
+        response : requests.Response
+            response object of the requets
+        """        
+        logger.debug(f'sending DELETE request to {self._api_url}')
+        properties = tools.convert_arguments_to_properties(unnamed, named)
+
+        # modify URL
+        properties['url'] = "%s/%s" % (self._api_url, properties['url'])
+        properties['verify'] = self._verify_ssl
+        # add headers to properties
+        if self._headers is not None:
+            if 'headers' in properties:
+                properties['headers'].update(self._headers)
+            else:
+                properties['headers'] = self._headers
+        return self._session.delete(**properties)

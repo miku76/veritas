@@ -248,30 +248,50 @@ class Checkmk:
             logger.error(f'status {response.status_code}; error: {response.content}')
             return False
 
-    def delete_hosts(self, devices:list) -> bool:
+    def delete_hosts(self, devices:list, bulk:bool=True) -> bool:
         """delete hosts from checkmk
 
         Parameters
         ----------
         devices : list
             list of devices to be deleted
+        bulk : bool
+            send bulk request
 
         Returns
         -------
         bool
             success or failure
-        """        
-        data = []
-        for device in devices:
-            data.append(device.get('host_name'))
+        """    
+        if bulk:
+            data = []
+            for device in devices:
+                data.append(device.get('host_name'))
 
-        response = self._checkmk.post(url="/domain-types/host_config/actions/bulk-delete/invoke", json={'entries': data})
-        if response.status_code == 200 or response.status_code == 204 :
-            logger.debug(f'hosts {data} successfully deleted')
-            return True
+            # the BULK delete is a POST request to check mk
+            response = self._checkmk.post(url="/domain-types/host_config/actions/bulk-delete/invoke", json={'entries': data})
+            if response.status_code == 200 or response.status_code == 204 :
+                logger.debug(f'hosts {data} successfully deleted')
+                return True
+            else:
+                logger.error(f'error removing hosts; status {response.status_code}; error: {response.content}')
+                return False
         else:
-            logger.error(f'error removing hosts; status {response.status_code}; error: {response.content}')
-            return False
+            overall = True
+            errors = 0
+            for device in devices:
+                response = self._checkmk.delete(url=f"/objects/host_config/{device}")
+                if response.status_code == 200 or response.status_code == 204 :
+                    logger.info(f'host {device} successfully deleted')
+                else:
+                    logger.error(f'error removing hosts; status {response.status_code}; error: {response.content}')
+                    overall = False
+                    errors += 1
+
+            if overall:
+                logger.info(f'remove {len(devices)} in cmk')
+            else:
+                logger.error(f'failed to emove {errors} devices')
 
     def repair_services(self) -> bool:
         """repair services
