@@ -26,6 +26,11 @@ class Device:
     def interface(self, interface_name:str) -> None:
         """set interface name
 
+        If interface is set this script will update the interface indetad of the device.
+        The syntax looks like this:
+
+        device.interface('Loopback0').update(description="descr")
+
         Parameters
         ----------
         interface_name : str
@@ -56,15 +61,32 @@ class Device:
 
         properties = tools.convert_arguments_to_properties(*unnamed, **named)
         if self._interface:
-            logger.debug(f'updating interface {self._device} / {self._interface}')
             return self.update_interface(properties)
+        else:
+            return self.update_device(properties)
 
+    def update_device(self, properties:dict) -> bool:
+        """update device
+
+        Parameters
+        ----------
+        properties : dict
+            properties to update
+
+        Returns
+        -------
+        bool
+            true if successful, false otherwise
+        """
         logger.debug(f'updating device {self._device}')
         device = self._nautobot.dcim.devices.get(name=self._device)
         if device:
             try:
                 update = device.update(properties)
-                logger.debug(f'device updated result={update}')
+                if update:
+                    logger.debug(f'device {self._device} updated')
+                else:
+                    logger.error(f'failed to update device {self._device}')
                 return update
             except Exception as exc:
                 logger.error(f'failed to update device {self._device}; exc={exc}')
@@ -89,7 +111,9 @@ class Device:
         -------
         bool
             true if successful, false otherwise
-        """        
+        """
+        logger.debug(f'updating interface {self._device} / {self._interface}')
+
         interface = self._nautobot.dcim.interfaces.get(
                     device=[self._device],
                     name=self._interface)
@@ -100,7 +124,11 @@ class Device:
                 f'interface {self._interface} not found',
                 additional_info=f'properties {properties}')
         try:
-            return interface.update(properties)
+            update = interface.update(properties)
+            if update:
+                logger.debug(f'interface {self._interface} updated')
+            else:
+                logger.error(f'failed to update interface {self._interface}')
         except Exception as exc:
             logger.error(f'failed to update interface; got exception {exc}')
             raise veritas_exceptions.UpdateInterfaceError(
@@ -111,15 +139,22 @@ class Device:
         """delete device or interface
         """
         if self._interface:
-            logger.debug(f'deleteing interface {self._device} / {self._interface}')
             return self.delete_interface()
+        else:
+            return self.delete_device()
 
+    def delete_device(self) -> bool:
+        """delete device or interface
+        """
         logger.debug(f'deleting device {self._device}')
         device = self._nautobot.dcim.devices.get(name=self._device)
         if device:
             try:
                 delete = device.delete()
-                logger.debug(f'device deleted result={delete}')
+                if delete:
+                    logger.debug(f'device {self._device} deleted')
+                else:
+                    logger.error(f'failed to delte device {self._device}')
                 return delete
             except Exception as exc:
                 logger.error(f'failed to delete device {self._device}; exc={exc}')
@@ -140,17 +175,24 @@ class Device:
         -------
         bool
             true if successful, false otherwise
-        """        
+        """
+        logger.debug(f'deleteing interface {self._device} / {self._interface}')
+
         interface = self._nautobot.dcim.interfaces.get(
                     device=[self._device],
                     name=self._interface)
 
         if not interface:
-            logger.error(f'unknown interface {self._interface} on {self._device}')
+            logger.error(f'unknown interface {self._device} / {self._interface}')
             raise veritas_exceptions.UnknownInterfaceError(
                 f'interface {self._interface} not found')
         try:
-            return interface.delete()
+            delete = interface.delete()
+            if delete:
+                logger.debug(f'interface {self._device} / {self._interface}')
+            else:
+                logger.error(f'failed to delte interface {self._interface} on {self._device}')
+            return delete
         except Exception as exc:
             logger.error(f'failed to delete interface; got exception {exc}')
             raise veritas_exceptions.DeleteInterfaceError(

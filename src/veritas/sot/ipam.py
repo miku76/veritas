@@ -1,5 +1,8 @@
 from loguru import logger
+
+# veritas
 from veritas.tools import tools
+from veritas.tools import exceptions as veritas_exceptions
 
 
 class Ipam(object):
@@ -145,8 +148,8 @@ class Ipam(object):
     def get_choices(self):
         return self._nautobot.ipam.ip_addresses.choices()
 
-    def assign_ipaddress_to_interface(self, interface, address, device=None, namespace='Global') -> bool:
-        """private method to assign IPv4 address to interface set primary IPv4
+    def assign_ipaddress_to_interface(self, interface, address, device, namespace='Global') -> bool:
+        """private method to assign IPv4 address to an interface
 
         Parameters
         ----------
@@ -163,23 +166,7 @@ class Ipam(object):
             True if successfull
 
         """
-        if isinstance(interface, str):
-            # we need the device to get the interface
-            if isinstance(device, str):
-                # get nautobot object of device
-                nb_device = self._nautobot.dcim.devices.get(name=device)
-            else:
-                nb_device = device
-
-            if not nb_device:
-                logger.error(f'failed to get device {device}')
-                return False
-            # get nautobot object of interface
-            nb_interface = self._nautobot.dcim.interfaces.get(
-                device_id=nb_device.id, 
-                name=interface)
-        else:
-            nb_interface = interface
+        nb_interface = self._get_interface_of_device(interface=interface, device=device)
 
         if isinstance(address, str):
             # get nautobot object of device
@@ -192,7 +179,7 @@ class Ipam(object):
         if not nb_addr:
             logger.error(f'failed to get IP address {address}')
 
-        logger.debug(f'assigning IP {address} to {nb_device}/{nb_interface.display}')
+        logger.debug(f'assigning IP {address} to {device}/{nb_interface.display}')
         try:
             properties = {'interface': nb_interface.id,
                          'ip_address': nb_addr.id}
@@ -234,3 +221,80 @@ class Ipam(object):
         except Exception:
             logger.error(f'could not set primary IPv4 on {nb_device}')
             return False
+
+    def assign_vrf_to_device(self, device, vrf) -> bool:
+        """
+        assign vrf to device
+        """
+        logger.debug(f'assigning vrf {vrf} to device {device}')
+        if isinstance(device, str):
+            # get nautobot object of device
+            nb_device = self._nautobot.dcim.devices.get(name=device)
+        else:
+            nb_device = device
+    
+        properties = {'vrf': vrf,
+                      'device': nb_device.id
+                     }
+        try:
+            assignment = self._nautobot.ipam.vrf_device_assignments.create(properties)
+            if assignment:
+                logger.debug(f'vrf assigned to device {nb_device.display}')
+            else:
+                logger.error(f'failed to assign vrf {vrf} to device {nb_device.display}')
+        except Exception as exc:
+            if 'The fields device, vrf must make a unique set.' in str(exc):
+                logger.debug('this VRF is already assigned')
+                return True
+            else:
+                logger.error(f'failed to assign vrf {vrf} to device {nb_device.display}')
+                raise(exc)
+
+
+    def _get_interface_of_device(self, interface, device):
+        """returns interface of device
+
+        Parameters
+        ----------
+        device : str or nautobot.dcim.devices
+            the device of the interfaces
+        interface : str or nautobot.dcim.interfaces
+            interface to assign IP to
+
+        Returns
+        -------
+        nautobot.dcim.interfaces
+            interface object
+
+        Raises
+        ------
+        UnknownDeviceError
+            Raises UnknownDeviceError if device is unknown
+        UnknownInterfaceError
+            Raises UnknownInterfaceError if interface is unknown
+
+        """
+        if isinstance(interface, str):
+            # we need the device to get the interface
+            if isinstance(device, str):
+                # get nautobot object of device
+                nb_device = self._nautobot.dcim.devices.get(name=device)
+            else:
+                nb_device = device
+
+            if not nb_device:
+                logger.error(f'failed to get device {device}')
+                raise veritas_exceptions.UnknownDeviceError(f'failed to get device {device}')
+
+            # get nautobot object of interface
+            nb_interface = self._nautobot.dcim.interfaces.get(
+                device_id=nb_device.id, 
+                name=interface)
+            if not nb_interface:
+                logger.error(f'failed to get interface {interface}')
+                raise veritas_exceptions.UnknownInterfaceError(f'failed to get interface {interface}')
+        else:
+            nb_interface = interface
+
+        return nb_interface
+
