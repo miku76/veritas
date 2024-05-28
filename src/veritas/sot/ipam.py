@@ -242,6 +242,7 @@ class Ipam(object):
                 logger.debug(f'vrf assigned to device {nb_device.display}')
             else:
                 logger.error(f'failed to assign vrf {vrf} to device {nb_device.display}')
+            return assignment
         except Exception as exc:
             if 'The fields device, vrf must make a unique set.' in str(exc):
                 logger.debug('this VRF is already assigned')
@@ -249,7 +250,6 @@ class Ipam(object):
             else:
                 logger.error(f'failed to assign vrf {vrf} to device {nb_device.display}')
                 raise(exc)
-
 
     def _get_interface_of_device(self, interface, device):
         """returns interface of device
