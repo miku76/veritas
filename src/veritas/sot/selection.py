@@ -42,11 +42,6 @@ class Selection(object):
 
     """
 
-    # we cache the queries if we have logical expressions
-    # because we get a list of hostnames using the expression
-    # and then get return the cahced values
-    query_cache = {}
-
     def __init__(self, sot:sot, select:tuple[list|str]) -> None:
         self._sot = sot
         self._using = set()
@@ -424,8 +419,8 @@ class Selection(object):
         else:
             default={'name': ''}
 
-        # look at the expression. where must be a dict!
-        # it is either a list ... parse it and make a dict
+        # look at the expression. 'where' must be a dict!
+        # it is a list ... parse it and make a dict
         if isinstance(expression, list):
             logger.bind(extra="simple_sql").trace(f'expression {expression} is a list')
             if len(expression) == 0:

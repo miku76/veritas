@@ -46,7 +46,7 @@ class Importer(object):
         except Exception as exc:
             logger.error("entity not added to sot; got exception %s" % exc)
             logger.error(f'properties: {properties}')
-            return None
+            raise(exc)
 
     def open_file(self, filename):
         logger.debug(f'opening file {filename}')

@@ -255,6 +255,7 @@ class Device:
             tag = self._nautobot.extras.tags.get(name=new_tag)
             if tag is None:
                 logger.error(f'unknown tag {new_tag}')
+                raise veritas_exceptions.UnknownValueError(f'unknown tag {new_tag}')
             else:
                 final_list.append(tag.id)
 

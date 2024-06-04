@@ -709,6 +709,9 @@ class Onboarding:
                         added_addresses.append(addr)
                 else:
                     logger.error(exc)
+                    logger.error(properties)
+                    raise(exc)
+
         return added_addresses 
 
     def _assign_ip_and_set_primary(self, device, interface, ip_address) -> bool:
