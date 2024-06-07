@@ -265,7 +265,13 @@ class VeritasInventory:
 
         # set the groups for the hosts
         for host in hosts.values():
-            host.groups = ParentGroups([groups[g] for g in host.groups])
+            for g in host.groups:
+                if g in groups:
+                    logger.debug(f'adding values of group {g} to host')
+                    host.groups = ParentGroups([groups[g] for g in host.groups])
+                else:
+                    logger.error(f'no values found for group {g}')
+                    host.groups = {}
 
         logger.bind(extra="nornir").trace(f"inventory: {hosts}")
         return Inventory(hosts=hosts, groups=groups, defaults=defaults)
