@@ -1,7 +1,6 @@
 from loguru import logger
 
 # veritas
-from veritas.tools import tools
 from veritas.tools import exceptions as veritas_exceptions
 
 
@@ -23,13 +22,10 @@ class Ipam(object):
             logger.error(f'could not add ip address; got exception {exc}')
             return False
 
-    def get_ip(self, *unnamed, **named):
+    def get_ip(self, address, namespace='Global'):
         """get IP address from ipam"""
-        properties = tools.convert_arguments_to_properties(*unnamed, **named)
-        address = properties.get('address')
         # if there is a / use address only
         address = address.split('/')[0]
-        namespace = properties.get('namespace','Global')
         logger.debug(f'getting IP {address} namespace {namespace}')
         return self._nautobot.ipam.ip_addresses.get(address=address,
                                                     namespace=namespace)
