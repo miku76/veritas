@@ -694,23 +694,19 @@ class Onboarding:
                 properties.update({'role': address['role']})
             if 'tags' in address and len(address['tags']) > 0:
                 properties.update({'tags': address['tags']})
-            try:
-                added_addresses.append(self._nautobot.ipam.ip_addresses.create(properties))
-                logger.debug(f'added IP {ip_address} to nautobot')
-            except Exception as exc:
-                if 'duplicate key value violates unique constraint' in str(exc):
-                    logger.debug(f'IP {ip_address} namespace: {namespace} address already exists; '\
-                        f'return_ip={self._use_ip_if_already_exists}')
-                    if self._use_ip_if_already_exists:
-                        addr = self._nautobot.ipam.ip_addresses.get(
+
+            # check if ip_address is already in SOT
+            addr_in_sot = self._nautobot.ipam.ip_addresses.get(
                             address=ip_address.split('/')[0], 
                             namespace=namespace)
-                        logger.debug(f'got IP {addr}')
-                        added_addresses.append(addr)
-                else:
-                    logger.error(exc)
-                    logger.error(properties)
-                    raise(exc)
+            if addr_in_sot:
+                logger.debug(f'IP {ip_address} namespace: {namespace} address already exists; '\
+                        f'return_ip={self._use_ip_if_already_exists}')
+                if self._use_ip_if_already_exists:
+                    added_addresses.append(addr_in_sot)
+            else:
+                added_addresses.append(self._nautobot.ipam.ip_addresses.create(properties))
+                logger.debug(f'added IP {ip_address} to nautobot')
 
         return added_addresses 
 
@@ -772,6 +768,7 @@ class Onboarding:
         """
         logger.debug(f'removing ALL assigments on {device.display}/{interface.display}')
         ip_addresses = self._nautobot.ipam.ip_addresses.filter(device_id=[device.id], interfaces=interface.display)
+        response = False
         for ip in ip_addresses:
             id_list = self._nautobot.ipam.ip_address_to_interface.filter(
                 interface=interface.display, 
