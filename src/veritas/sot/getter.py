@@ -30,7 +30,7 @@ class Getter(object):
         Parameters
         ----------
         name : str
-            name of the device
+            name or id of the device
         by_id : bool, optional
             get device by id, by default False
 
@@ -75,6 +75,9 @@ class Getter(object):
                 return self._nautobot.dcim.devices.get(name=device)
         return None
 
+    def device_by_id(self, id:str) -> models.dcim.Devices:
+        return self.device(name=id, by_id=id)
+
     def device_by_serial(self, serial_number) -> models.dcim.Devices | str:
         """get device by using an a serial number
 
@@ -87,8 +90,8 @@ class Getter(object):
         -------
         device : Endpoint
             Endpoint of the device or None
-        """        
-        return self.query(select=['name'], 
+        """
+        return self.query(select=['id', 'name'], 
                           using='nb.devices',
                           where={'serial': serial_number}, 
                           mode='sql')
