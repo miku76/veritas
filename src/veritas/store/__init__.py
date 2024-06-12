@@ -45,7 +45,7 @@ def get(app, key, database=None):
 
     conn, cursor = _connect_to_db(database)
 
-    sql = f'SELECT value FROM store WHERE APP=%s and KEY=%s'
+    sql = 'SELECT value FROM store WHERE APP=%s and KEY=%s'
     try:
         cursor.execute(sql, (app, key))
         value = cursor.fetchall()
@@ -69,7 +69,7 @@ def delete(app, key, database=None):
 
     conn, cursor = _connect_to_db(database)
 
-    sql = f'DELETE FROM store WHERE APP=%s and KEY=%s'
+    sql = 'DELETE FROM store WHERE APP=%s and KEY=%s'
     try:
         logger.debug(f'delete store entry app={app} key={key}')
         cursor.execute(sql, (app, key))
