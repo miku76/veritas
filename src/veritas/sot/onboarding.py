@@ -480,6 +480,7 @@ class Onboarding:
                             device_id=device.id,
                             name=interface.get('name'))
             nb_interface.update(interface)
+
             # remove ALL assigments
             self._remove_all_assignments(device, nb_interface)
 
@@ -536,7 +537,8 @@ class Onboarding:
             return False
         
         try:
-            return device.update({'primary_ip4': ip_address.id})
+            logger.debug(f'setting primary ip4 of {device.display} to {ip_address.display} ({ip_address.id})')
+            return device.update({'primary_ipv4': ip_address.id})
         except Exception as exc:
             if 'is not assigned to this device' in str(exc):
                 logger.error(f'the address {ip_address.display} is not assigned to {device.name}')
@@ -711,7 +713,7 @@ class Onboarding:
         return added_addresses 
 
     def _assign_ip_and_set_primary(self, device, interface, ip_address) -> bool:
-        """private method to assign IPv4 address to interface set primary IPv4
+        """private method to assign IPv4 address to interface and set primary IPv4
 
         Parameters
         ----------
@@ -740,11 +742,14 @@ class Onboarding:
             else:
                 assigned = False
                 logger.error(exc)
-        
+                raise(exc)
+
         if assigned and str(interface.display).lower() == self._primary_interface.lower():
             logger.debug('found primary IP; update device and set primary IPv4')
             try:
-                device.update({'primary_ip4': ip_address.id})
+                #device.update({'primary_ip4': {'id': ip_address.id}})
+                device.primary_ip4 = ip_address
+                device.save()
             except Exception:
                 logger.error(f'could not set primary IPv4 on {device}')
 
@@ -773,7 +778,8 @@ class Onboarding:
             id_list = self._nautobot.ipam.ip_address_to_interface.filter(
                 interface=interface.display, 
                 ip_address=ip.id)
-            response = True
             for assignment in id_list:
                 assignment.delete()
+            response = True
+
         return response

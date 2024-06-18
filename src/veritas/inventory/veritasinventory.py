@@ -212,8 +212,9 @@ class VeritasInventory:
             primary_ip4 = sot_ip4.split('/')[0] if sot_ip4 is not None else hostname
             host_or_ip = primary_ip4 if self.use_primary_ip else hostname
             platform = device.get('platform',{}).get('name','ios') if device['platform'] else 'ios'
+            # check if platform is not None
             manufacturer = device.get('platform',{}).get('manufacturer',{}).get('name') \
-                if device['platform']['manufacturer'] else 'cisco'
+                    if (device['platform'] and device['platform']['manufacturer']) else 'cisco'
 
             # data is added to the host and can be used by the user
             _data = {'platform': platform,

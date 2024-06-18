@@ -422,7 +422,7 @@ class Selection(object):
         # look at the expression. 'where' must be a dict!
         # it is a list ... parse it and make a dict
         if isinstance(expression, list):
-            logger.bind(extra="simple_sql").trace(f'expression {expression} is a list')
+            logger.bind(extra="simple_sql").debug(f'expression {expression} is a list')
             if len(expression) == 0:
                 where = default
             else:
@@ -431,16 +431,16 @@ class Selection(object):
                         key, value = p.split('=')
                         where = {key: value}
         elif isinstance(expression, dict):
-            logger.bind(extra="simple_sql").trace('expression is dict.Leave it as it is.')
+            logger.bind(extra="simple_sql").debug('expression is dict.Leave it as it is.')
             where = expression
         elif '=' in expression:
             # or a string .... split it and make a dict
-            logger.bind(extra="simple_sql").trace('expression is string and contains "="')
+            logger.bind(extra="simple_sql").debug('expression is string and contains "="')
             key, value = expression.split('=')
             where = {key: value}
         else:
             # or we use the default value
-            logger.bind(extra="simple_sql").trace('setting default value as expression')
+            logger.bind(extra="simple_sql").debug('setting default value as expression')
             where = default
 
         return self._sot.get.query(

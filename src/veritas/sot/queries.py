@@ -87,12 +87,19 @@ def _execute_sql_query(
             subqueries[sq].append('offset: $offset')
             query_final_vars.append('$offset: Int')
 
-    # convert string ["val1","val2",....,"valn"] to list
+    # convert string ["val1", "val2",....,"valn"] to list
     for key,val in dict(where).items():
-        logger.bind(extra="cnvt where").trace(f'key: {key} val: {val} type(val): {type(val)}')
+        logger.bind(extra="cnvt where").debug(f'key: {key} val: {val} type(val): {type(val)}')
         if isinstance(val, str):
             if val.startswith('"') and val.endswith('"'):
                 logger.warning(f'val {val} is encapsulated with a ".." this may cause problems')
+            if key == 'name' and ',' in val:
+                # it is possible to use the following syntax
+                # --devices name=device1,device2,device3
+                # we have to split this into a list
+                logger.bind(extra="cnvt whr").debug('got a list of devices')
+                list_of_devices = val.replace(' ','').split(',')
+                where[key] = list_of_devices
             # convert Boolean to True/False
             if cf_fields_types and cf_fields_types.get(key.replace('cf_',''),{}).get('type') == 'Boolean (true/false)':
                 logger.bind(extra="cnvt whr").trace(f'converting val: {val} to bool')
