@@ -732,9 +732,9 @@ class Onboarding:
         """
         logger.debug(f'assigning IP {ip_address} to {device}/{interface.display}')
         try:
-            properties = {'interface': interface.id,
-                          'ip_address': ip_address.id} 
-            assigned = self._nautobot.ipam.ip_address_to_interface.create(properties)
+            assigned = self._nautobot.ipam.ip_address_to_interface.create(
+                {'interface': interface.id,
+                 'ip_address': ip_address.id})
         except Exception as exc:
             if 'The fields interface, ip_address must make a unique set.' in str(exc):
                 logger.debug('this IP address is already assigned')
@@ -747,8 +747,7 @@ class Onboarding:
         if assigned and str(interface.display).lower() == self._primary_interface.lower():
             logger.debug('found primary IP; update device and set primary IPv4')
             try:
-                #device.update({'primary_ip4': {'id': ip_address.id}})
-                device.primary_ip4 = ip_address
+                device.update({'primary_ip4': {'id': ip_address.id}})
                 device.save()
             except Exception:
                 logger.error(f'could not set primary IPv4 on {device}')

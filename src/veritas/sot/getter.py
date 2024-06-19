@@ -163,7 +163,7 @@ class Getter(object):
     def interface(self, device, interface_name, device_id=None):
         """returns interface of device"""
         if device_id:
-            logger.debug(f'getting Interface {interface_name} of {device_id}')
+            logger.debug(f'getting Interface {interface_name} of device.id {device_id}')
             return self._nautobot.dcim.interfaces.get(device_id=device_id, 
                                                       name=interface_name)
         else:
