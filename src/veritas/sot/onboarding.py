@@ -538,7 +538,10 @@ class Onboarding:
         
         try:
             logger.debug(f'setting primary ip4 of {device.display} to {ip_address.display} ({ip_address.id})')
-            return device.update({'primary_ipv4': ip_address.id})
+            #return device.update({'primary_ipv4': ip_address.id})
+            success = device.primary_ip4 = ip_address
+            device.save()
+            return success
         except Exception as exc:
             if 'is not assigned to this device' in str(exc):
                 logger.error(f'the address {ip_address.display} is not assigned to {device.name}')
@@ -747,7 +750,8 @@ class Onboarding:
         if assigned and str(interface.display).lower() == self._primary_interface.lower():
             logger.debug('found primary IP; update device and set primary IPv4')
             try:
-                device.update({'primary_ip4': {'id': ip_address.id}})
+                # device.update({'primary_ip4': {'id': ip_address.id}})
+                device.primary_ip4 = ip_address
                 device.save()
             except Exception:
                 logger.error(f'could not set primary IPv4 on {device}')
