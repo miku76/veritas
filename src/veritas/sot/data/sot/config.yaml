@@ -536,6 +536,7 @@ queries:
           id @include(if: $get_id)
           name
         }
+        __relationships__
       }
     }
 

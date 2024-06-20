@@ -34,6 +34,9 @@ def _execute_sql_query(
                   '__general_params__': [],
                   '__vms_params__': []}
 
+    # the user can select relationsships using select rel_nameOfRelationship
+    relationships = []
+
     # read query from config
     query = getter_obj._sot.sot_config.get('queries',{}).get(using)
 
@@ -125,9 +128,16 @@ def _execute_sql_query(
     for v in select:
         if v.startswith('cf_'):
             where['get_custom_field_data'] = True
+        elif v.startswith('rel_'):
+            # add relationships to our list of relationships
+            # relationships are added to our query body
+            relationships.append(v)
         else:
             # we may have a . in our select values eg. platform.name
             where[f'get_{v.split(".")[0]}'] = True
+
+    # add relationships to our query
+    query = query.replace('__relationships__', ",".join(relationships))
 
     # set limit and offset if needed
     if limit > 0:
