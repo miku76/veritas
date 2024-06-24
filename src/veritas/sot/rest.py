@@ -148,8 +148,8 @@ class Rest(object):
         response : requests.Response
             response object of the requets
         """        
-        logger.debug(f'sending PATCH request to {self._api_url}')
         properties = tools.convert_arguments_to_properties(unnamed, named)
+        logger.debug(f'sending PATCH request to {self._api_url} {properties["url"]}')
 
         # modify URL
         properties['url'] = "%s/%s" % (self._api_url, properties['url'])

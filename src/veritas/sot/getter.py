@@ -1,8 +1,10 @@
+import json
 from loguru import logger
 from pynautobot import models
 
 # veritas
 from veritas.sot import queries
+from veritas.sot import rest as veritas_rest
 
 
 class Getter(object):
@@ -16,9 +18,22 @@ class Getter(object):
     def __init__(self, sot):
         self._instance = None
         self._sot = sot
+        self._api = "pynautobot"
         self._nautobot = self._sot.open_nautobot()
 
     # -----===== user command =====-----
+
+    def rest(self, url, token, format="json", depth=0, verify_ssl=True):
+        """use rest api"""
+        self._api = "rest"
+        self._rst_frmt = format
+        self._url = url
+        self._token = token
+        self._verify_ssl = verify_ssl
+        self._depth = depth
+        self._rest = veritas_rest.Rest(self, url=url, token=token, verify_ssl=verify_ssl)
+        self._rest.session()
+        return self
 
     def nautobot(self):
         """return nautobot object"""
@@ -41,6 +56,12 @@ class Getter(object):
         """        
         # name can be either the name (in most cases) or the id
 
+        if self._api == "rest":
+            if by_id:
+                return self._rest.get(url=f"api/dcim/devices/?id={name}&depth={self._depth}", format=self._rst_frmt)
+            else:
+                return self._rest.get(url=f"api/dcim/devices/?name={name}&depth={self._depth}", format=self._rst_frmt)
+
         if by_id:
             return self._nautobot.dcim.devices.get(id=name)
         else:
@@ -60,7 +81,21 @@ class Getter(object):
         -------
         device : Endpoint | str
             name or Endpoint of the device
-        """        
+        """
+
+        if self._api == "rest":
+            addr = self._rest.get(url=f"api/ipam/ip-addresses/?address={ip}&depth=2", format="json")
+            if addr.get('count',0) == 0:
+                return None
+            interfaces = addr['results'][0].get('interfaces')
+            for iface in interfaces:
+                device = iface.get('device')
+                if device:
+                    id = device.get('id')
+                    if id:
+                        return self._rest.get(url=f"api/dcim/devices/?id={id}&depth={self._depth}", format=self._rst_frmt)
+            return None
+  
         interfaces = self.query(select=['interfaces'], 
                                 using='nb.ipaddresses',
                                 where={'address': ip}, 
@@ -76,7 +111,10 @@ class Getter(object):
         return None
 
     def device_by_id(self, id:str) -> models.dcim.Devices:
-        return self.device(name=id, by_id=id)
+        if self._api == "rest":
+            return self._rest.get(url=f"api/dcim/devices/?id={id}&depth={self._depth}", format=self._rst_frmt)
+        else:
+            return self.device(name=id, by_id=id)
 
     def device_by_serial(self, serial_number) -> models.dcim.Devices | str:
         """get device by using an a serial number
@@ -91,6 +129,9 @@ class Getter(object):
         device : Endpoint
             Endpoint of the device or None
         """
+        if self._api == "rest":
+            return self._rest.get(url=f"api/dcim/devices/?serial={serial_number}&depth={self._depth}", format=self._rst_frmt)
+
         return self.query(select=['id', 'name'], 
                           using='nb.devices',
                           where={'serial': serial_number}, 
@@ -110,7 +151,13 @@ class Getter(object):
         -------
         device : Endpoint | str
             name of device or Endpoint
-        """        
+        """
+        if self._api == "rest":
+            device = self._rest.get(url=f"api/dcim/devices/?name={name}&depth=2", format="json")
+            if device.get('count',0) == 0:
+                return None
+            return device.get('results')[0].get('primary_ip4',{}).get('address')
+
         device = self._nautobot.dcim.devices.get(name=name)
         if cast:
             return device.primary_ip4.display
@@ -131,7 +178,13 @@ class Getter(object):
         -------
         devide : models.ipam.IpAddresses | str
             name of device or Endpoint
-        """        
+        """
+        if self._api == "rest":
+            device = self._rest.get(url=f"api/dcim/devices/?name={name}&depth=2", format="json")
+            if device.get('count',0) == 0:
+                return None
+            return device.get('results')[0].get('primary_ip6',{}).get('address')
+
         device = self._nautobot.dcim.devices.get(name=name)
         if cast:
             return device.primary_ip6.display
@@ -155,6 +208,13 @@ class Getter(object):
         """        
         # name can be either the name (in most cases) or the id
 
+        if self._api == "rest":
+            if by_id:
+                return self._rest.get(url=f"api/ipam/ip-addresses/?id={address}&depth={self._depth}", format="json")
+            else:
+                return self._rest.get(url=f"api/ipam/ip-addresses/?address={address}&depth={self._depth}", format="json")
+
+
         if by_id:
             return self._nautobot.ipam.ip_addresses.get(id=address)
         else:
@@ -162,6 +222,12 @@ class Getter(object):
 
     def interface(self, device, interface_name, device_id=None):
         """returns interface of device"""
+        if self._api == "rest":
+            if device_id:
+                return self._rest.get(url=f"api/dcim/interfaces/?device_id={device_id}&name={interface_name}&depth={self._depth}", format="json")
+            else:
+                return self._rest.get(url=f"api/dcim/interfaces/?device={device}&name={interface_name}&depth={self._depth}", format="json")
+
         if device_id:
             logger.debug(f'getting Interface {interface_name} of device.id {device_id}')
             return self._nautobot.dcim.interfaces.get(device_id=device_id, 
@@ -172,7 +238,7 @@ class Getter(object):
                                                       name=interface_name)
 
     def interface_by_device_id(self,device_id:str, interface_name:str) -> models.dcim.Interfaces:
-        """get uinterface by device id and interface name
+        """get interface by device id and interface name
 
         Parameters
         ----------
@@ -186,11 +252,14 @@ class Getter(object):
         interface : models.dcim.Interfaces
             the interface object
         """
+        if self._api == "rest":
+            return self._rest.get(url=f"api/dcim/interfaces/?device_id={device_id}&name={interface_name}&depth={self._depth}", format="json")
+
         logger.debug(f'getting Interface {interface_name} of {device_id}')
         return self._nautobot.dcim.interfaces.get(device_id=device_id, 
-                                                    name=interface_name)
+                                                  name=interface_name)
 
-    def interfaces(self, device:str, device_id:str) -> models.dcim.Interfaces:
+    def interfaces(self, device:str, device_id:str=None) -> models.dcim.Interfaces:
         """get all interfaces by device or device_id
 
         Parameters
@@ -204,7 +273,13 @@ class Getter(object):
         -------
         interfaces : models.dcim.Interfaces
             all interfaces of the device
-        """        
+        """
+        if self._api == "rest":
+            if device_id:
+                return self._rest.get(url=f"api/dcim/interfaces/?device_id={device_id}&depth={self._depth}", format="json")
+            else:
+                return self._rest.get(url=f"api/dcim/interfaces/?device={device}&depth={self._depth}", format="json")
+
         if device_id:
             logger.debug(f'getting ALL Interface of ID {device_id}')
             return self._nautobot.dcim.interfaces.filter(device_id=device_id)
@@ -221,7 +296,7 @@ class Getter(object):
         -------
         vlans : list
             a list of vlans
-        """        
+        """
         return self._sot.ipam.get_vlans(*unnamed, **named)
 
     def hldm(self, device:str, get_id:bool=True) -> dict:
@@ -445,4 +520,3 @@ class Getter(object):
             Interface type choices
         """        
         return self._nautobot.dcim.interfaces.choices()
-
