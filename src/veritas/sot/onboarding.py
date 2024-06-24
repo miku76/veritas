@@ -750,7 +750,6 @@ class Onboarding:
         if assigned and str(interface.display).lower() == self._primary_interface.lower():
             logger.debug('found primary IP; update device and set primary IPv4')
             try:
-                # device.update({'primary_ip4': {'id': ip_address.id}})
                 device.primary_ip4 = ip_address
                 device.save()
             except Exception:
@@ -775,13 +774,16 @@ class Onboarding:
 
         """
         logger.debug(f'removing ALL assigments on {device.display}/{interface.display}')
-        ip_addresses = self._nautobot.ipam.ip_addresses.filter(device_id=[device.id], interfaces=interface.display)
+        ip_addresses = self._nautobot.ipam.ip_addresses.filter(device=[device], interfaces=interface.id)
+        debug_list_of_ip = [ip.display for ip in ip_addresses]
+        logger.debug(f'got this list of IP addresses {debug_list_of_ip}')
         response = False
         for ip in ip_addresses:
             id_list = self._nautobot.ipam.ip_address_to_interface.filter(
-                interface=interface.display, 
+                interface=interface.id, 
                 ip_address=ip.id)
             for assignment in id_list:
+                logger.debug(f'delete assignment {device}/{interface.display} {ip}')
                 assignment.delete()
             response = True
 
