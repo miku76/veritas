@@ -66,3 +66,13 @@ class DeleteInterfaceError(Exception):
         else:
             message = f'{message} - {additional_info}'
             super().__init__(message)
+
+class ConfigParserLoadError(Exception):
+    """Exception raised if loading the config parser failed
+    """
+    def __init__(self, message, additional_info=None):
+        if additional_info is None:
+            super().__init__(message)
+        else:
+            message = f'{message} - {additional_info}'
+            super().__init__(message)

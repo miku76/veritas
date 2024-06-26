@@ -4,12 +4,10 @@ from veritas.tools import tools
 
 
 class Rest(object):
-    """_summary_
+    """helper class to communicate with nautobot using the REST API
 
     Parameters
     ----------
-    sot : Sot
-        sot object
     authentication : str
         authentication type
     username : str
@@ -23,9 +21,8 @@ class Rest(object):
     verify_ssl : bool
         verify ssl
     """
-    def __init__(self, sot, authentication='bearer', username=None, password=None, 
+    def __init__(self, authentication='bearer', username=None, password=None, 
                  token=None, url=None, verify_ssl=True, debug=False):
-        self._sot = sot
         self._authentication = authentication
         self._username = username
         self._password = password

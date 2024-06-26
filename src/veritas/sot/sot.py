@@ -9,7 +9,7 @@ from pynautobot import api
 from veritas.sot import ipam
 from veritas.sot import getter
 from veritas.sot import selection
-from veritas.sot import onboarding
+# from veritas.sot import onboarding
 from veritas.sot import device as dvc
 from veritas.sot import importer
 from veritas.sot import updater
@@ -104,10 +104,10 @@ class Sot:
         device = sot.get.device(name='my_device')
 
         """
-        if item == "onboarding":
-            if self._onboarding is None:
-                self._onboarding = onboarding.Onboarding(self)
-            return self._onboarding
+        # if item == "onboarding":
+        #     if self._onboarding is None:
+        #         self._onboarding = onboarding.Onboarding(self)
+        #     return self._onboarding
         if item == "ipam":
             if self._ipam is None:
                 self._ipam = ipam.Ipam(self)
