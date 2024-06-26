@@ -156,6 +156,7 @@ class VeritasInventory:
             connection_options: Dict[str, Any] = {},
             data: Dict[str, Any] = {},
             select: list = [],
+            using: str = "nb.devices",
             host_groups: list = [],
             defaults: Dict[str, Any] = {},
             groups: Dict[str, Any] = {},
@@ -168,6 +169,7 @@ class VeritasInventory:
         self.connection_options = connection_options
         self.data = data
         self.select = select
+        self.using = using
         self.host_groups = host_groups
         self.defaults = defaults
         self.groups = groups
@@ -187,15 +189,24 @@ class VeritasInventory:
         Inventory
             The Inventoty object containing the hosts, the groups and the default values
         """
+
+        # if the user wants 'data' or groups we have to add those fields to our select list
         hosts = Hosts()
         groups = Groups()
 
-        # if the user wants 'data' or groups we have to add those fields to our select list
-        select = ['hostname', 'primary_ip4', 'platform'] + self.select
+        if 'nb.devices' == self.using:
+            select = ['hostname', 'primary_ip4', 'platform'] + self.select
+            sot_devicelist = self.sot.select(select) \
+                                    .using(self.using) \
+                                    .where(self.where)
+        elif 'nb.ipaddresses' == self.using:
+            select = ['hostname', 'address', 'primary_ip4', 'primary_ip4_for', 'platform']
+            sot_devicelist = self.sot.select(select) \
+                                    .using(self.using) \
+                                    .transform('ipaddress_to_device') \
+                                    .where(self.where)
+
         logger.bind(extra="inventory").debug(f'select: {select}')
-        sot_devicelist = self.sot.select(select) \
-                                 .using('nb.devices') \
-                                 .where(self.where)
 
         # get defaults
         if self.defaults:

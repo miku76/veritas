@@ -43,6 +43,8 @@ class Job(object):
         self._nornir = None
         self._nautobot = None
         self._on = None
+        # set self._using to default value (query devices)
+        self._using = "nb.devices"
         self._profile = None
         self._host_groups = []
         self._groups = groups
@@ -74,6 +76,22 @@ class Job(object):
         self._on = tools.convert_arguments_to_properties(unnamed, named)
         return self
 
+    def using(self, using:str) -> None:
+        """set using to query devices/ip addresses etc.
+
+        this method is used as fluent interface
+
+        Parameters
+        ----------
+        using : str
+            name of database
+
+        the parameter are used as 'using' parameter to query the source of truth
+
+        """        
+        self._using = using
+        return self
+
     def set(self, profile=None, username=None, password=None, result=None, parse=False,
             port=None, plaintext:bool=False, use_primary=None, logging=None) -> None:
         """set is used to set the properties of the job
@@ -99,8 +117,9 @@ class Job(object):
         self._logging = logging if logging else self._logging
         return self
 
-    def init_nornir(self, data:dict=None, select:str=None, host_groups:list=[], groups:dict=None,
-                     defaults={}, connection_options:dict=None, num_workers:int=10) -> Nornir:
+    def init_nornir(self, data:dict=None, select:str=None, using:str=None, host_groups:list=[],
+                    groups:dict=None, defaults={}, connection_options:dict=None,
+                    num_workers:int=10) -> Nornir:
         """init nornir
 
         Parameters
@@ -144,6 +163,7 @@ class Job(object):
         """
         _data = data if data else self._data
         _select = select if select else self._select
+        _using = using if using else self._using
         _host_groups = host_groups if len(host_groups) > 0 else self._host_groups
         _groups = groups if groups else self._groups
         _worker = num_workers
@@ -183,6 +203,7 @@ class Job(object):
                     'connection_options': connection_opts,
                     'data': _data,
                     'select': _select,
+                    'using': _using,
                     'host_groups': _host_groups,
                     'defaults': _defaults,
                     'groups': _groups,
