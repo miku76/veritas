@@ -1,4 +1,4 @@
-# this is the origibla source code of nornir inspect
+# this is the original source code of nornir inspect
 # source: https://raw.githubusercontent.com/packetcoders/nornir-inspect/main/nornir_inspect.py
 # we use this code because the dependencies of nornir inspect are not compatible with veritas
 # precisely the rich library is not compatible with veritas
@@ -15,10 +15,10 @@ highlighter = ReprHighlighter()
 
 
 def create_object_attribute_tree(
-    nr_result: AggregatedResult,
-    vals: bool = True,
-    headings: bool = True,
-) -> Tree:
+        nr_result: AggregatedResult,
+        vals: bool = True,
+        headings: bool = True,
+    ) -> Tree:
     """
     Take an `AggregatedResult` object and prints a tree of the object's attributes and
     values.
