@@ -327,8 +327,9 @@ def transform_data(data: dict, transform:list, **kwargs) -> dict:
         if 'ipaddress_to_device' == transformation:
             response = []
             for device in data:
-                primary_ip4_for = device.get('primary_ip4_for')
-                response.append(primary_ip4_for[0])
+                if 'primary_ip4_for' in device and len(device['primary_ip4_for']) > 0:
+                    primary_ip4_for = device.get('primary_ip4_for',[])
+                    response.append(primary_ip4_for[0])
             data = response
 
     return data
