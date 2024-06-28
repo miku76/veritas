@@ -35,11 +35,9 @@ class Checkmk:
 
     def _start_session(self) -> None:
         """start session with checkmk server"""
-        logger.debug(f'starting checkmk session on {self._api_url}')
-
         # baseurl http://hostname/site/check_mk/api/1.0
         api_url = f'{self._url}/{self._site}/check_mk/api/1.0'
-        logger.debug(f'starting session for {self._username} on {api_url}')
+        logger.debug(f'starting CMK session for {self._username} on {api_url}')
         self._checkmk = self._sot.rest(url=api_url, 
                                        username=self._username,
                                        password=self._password)
@@ -503,6 +501,16 @@ class Checkmk:
         else:
             logger.error(f'adding config failed; error: {response.content}')
             return False
+
+    def get_host_internal(self, hostname:str) -> dict:
+        # get host internals (site and is_cluster) from check mk
+        response = self._checkmk.get(url=f"/objects/host_config_internal/{hostname}",
+                                     format='object')
+        if response.status_code != 200:
+            logger.error(f'got status code {response.status_code}; giving up')
+            return None
+
+        return response.json()
 
     def get(self, url:str, params:dict=None, format:str=None) -> requests.Response:
         """make get request
