@@ -215,7 +215,7 @@ class Sot:
         --------
         rest = sot.rest(url='http://127.0.0.1', username='username', password='password')
         """
-        return rest.Rest(self, *unnamed, **named)
+        return rest.Rest(*unnamed, **named)
 
     def open_nautobot(self) -> api:
         """opens connection to nautobot
