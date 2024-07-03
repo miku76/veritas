@@ -1,5 +1,6 @@
 from loguru import logger
 import requests
+import json
 
 # veritas
 from veritas import sot
@@ -133,13 +134,65 @@ class Checkmk:
             success or failure
         """
         logger.debug('activating all changes')
-        response = self._activate_etag(self._check_mk, '*',[ self._site ])
+        response = self.activate_etag('*',[ self._site ])
+        if not response:
+            return 
+        # content = json.loads(response.content)
+        # id = content.get('id')
+        # title = content.get('title')
+        # if response.status_code not in {200, 412}:
+        #     logger.error(f'got status {response.status_code} could not activate changes; error: {response.content}')
+        #     return False
+        # print(title)
+        # print(f'activation started with id {id}')
+        # print(content)
+        # print(json.dumps(content.get('extensions'), indent=4))
+        return True
+
+    def show_activation_status(self, id) -> bool:
+        """check last activation status
+
+        Returns
+        -------
+        bool
+            success or failure
+        """
+        logger.debug('checking last activating status')
+        response = self._checkmk.get(url=f'/objects/activation_run/{id}')
         if response.status_code not in {200, 412}:
             logger.error(f'got status {response.status_code} could not activate changes; error: {response.content}')
             return False
+        content = json.loads(response.content)
+        title = content.get('title')
+        extensions = content.get('extensions')
+        print(title)
+        print(json.dumps(extensions, indent=4))
         return True
 
-    def _activate_etag(self, etag:str, site:str) -> requests.Response:
+    def show_pending_changes(self) -> bool:
+        """show pending changes
+
+        Returns
+        -------
+        bool
+            success or failure
+        """
+        logger.debug('showing pending changes')
+        response = self._checkmk.get(url="/domain-types/activation_run/collections/pending_changes")
+        if response.status_code == 200:
+            etag = response.headers.get('ETag')
+            content = json.loads(response.content)
+            if len(content.get('value')) == 0:
+                print('there are no pending changes')
+                return True
+            print(json.dumps(content.get('value'), indent=4))
+            print(f'etag: {etag}')
+            return True
+        else:
+            logger.error(f'got status {response.status_code} could not show pending changes; error: {response.content}')
+            return False
+
+    def activate_etag(self, etag:str, site:list=None) -> requests.Response:
         """activate etag
 
         Parameters
@@ -154,6 +207,7 @@ class Checkmk:
         requests.Response
             response
         """
+        site = site if site else [self._site]
         headers={
                 "If-Match": etag,
                 "Content-Type": 'application/json',
@@ -162,9 +216,24 @@ class Checkmk:
                 "sites": site,
                 "force_foreign_changes": True}
 
-        return self._checkmk.post(url="/domain-types/activation_run/actions/activate-changes/invoke", 
-                                  json=data, 
-                                  headers=headers)
+        response = self._checkmk.post(url="/domain-types/activation_run/actions/activate-changes/invoke", 
+                                      json=data, 
+                                      headers=headers)
+        if response.status_code == 422:
+            logger.info('Currently there are no changes to activate.')
+            return False
+        elif response.status_code == 200:
+            content = json.loads(response.content)
+            title = content.get('title')
+            id = content.get('id')
+            print(title)
+            print(json.dumps(content.get('extensions'), indent=4))
+            print(f'activation_run id: {id}')
+        else:
+            logger.error(f'got status code {response.status_code}; error: {response.content}')
+            logger.error(f'failed to activate changes {etag} on site {site}')
+        
+        return response
 
     def move_host_to_folder(self, hostname:str, etag:str, new_folder:str) -> bool:
         """move host to folder
@@ -287,9 +356,10 @@ class Checkmk:
                     errors += 1
 
             if overall:
-                logger.info(f'remove {len(devices)} in cmk')
+                logger.info(f'removed {len(devices)} in cmk')
             else:
-                logger.error(f'failed to emove {errors} devices')
+                logger.error(f'failed to remove {errors} devices')
+            return overall
 
     def repair_services(self) -> bool:
         """repair services
