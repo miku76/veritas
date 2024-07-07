@@ -28,7 +28,6 @@ queries:
 
   nb.prefixes: >
     query Prefix(
-        $get_cf: Boolean = false,
         $get_custom_field_data: Boolean = false,
         $get__custom_field_data: Boolean = false,
         $get_config_context: Boolean = false,
@@ -76,7 +75,6 @@ queries:
           id @include(if: $get_id)
           name
         }
-        _custom_field_data @include(if: $get_cf)
         _custom_field_data @include(if: $get__custom_field_data)
         custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
         ip_addresses @include(if: $get_ip_addresses) 
@@ -131,7 +129,8 @@ queries:
               name
             }
             config_context @include(if: $get_config_context)
-            _custom_field_data @include(if: $get_cf)
+            _custom_field_data @include(if: $get__custom_field_data)
+            custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
             interfaces @include(if: $get_interfaces) 
             {
               id @include(if: $get_id)
@@ -252,9 +251,7 @@ queries:
   nb.devices: >
     query Devices(
       $get_asset_tag: Boolean = false,
-      $get_cf: Boolean = false,
       $get_custom_field_data: Boolean = false,
-      $get_custom_fields: Boolean = false,
       $get__custom_field_data: Boolean = false,
       $get_config_context: Boolean = false,
       $get_device_bays: Boolean = false,
@@ -290,10 +287,8 @@ queries:
         hostname: name @include(if: $get_hostname)
         asset_tag @include(if: $get_asset_tag)
         config_context @include(if: $get_config_context)
-        _custom_field_data @include(if: $get_cf)
         _custom_field_data @include(if: $get__custom_field_data)
         custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
-        custom_fields : _custom_field_data @include(if: $get_custom_fields)
         position @include(if: $get_position)
         face @include(if: $get_face)
         serial @include(if: $get_serial)
@@ -544,10 +539,8 @@ queries:
     query IPaddresses(
       $get_address: Boolean = false,
       $get_config_context: Boolean = false, 
-      $get_cf: Boolean = false,
       $get_custom_field_data: Boolean = false,
       $get__custom_field_data: Boolean = false,
-      $get_custom_fields: Boolean = false,
       $get_description: Boolean = false,
       $get_device_type: Boolean = false, 
       $get_dns_name: Boolean = false,
@@ -582,19 +575,21 @@ queries:
         type @include(if: $get_type)
         tags @include(if: $get_tags) 
         {
-          id
+          id @include(if: $get_id)
           name
         }
         parent @include(if: $get_parent) 
         {
-          id
+          id @include(if: $get_id)
           network
           prefix
           prefix_length
           namespace {
-            id
+            id @include(if: $get_id)
             name
           }
+          _custom_field_data @include(if: $get__custom_field_data)
+          custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
         }
         # show ALL interfaces the IP address is assigned on
         interfaces (__interfaces_params__) @include(if: $get_interfaces) 
@@ -703,10 +698,8 @@ queries:
             name
           }
           config_context @include(if: $get_config_context)
-          _custom_field_data @include(if: $get_cf)
           _custom_field_data @include(if: $get__custom_field_data)
           custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
-          custom_fields : _custom_field_data @include(if: $get_custom_fields)
           primary_ip4 @include(if: $get_primary_ip4) 
           {
             id @include(if: $get_id)
@@ -980,7 +973,6 @@ queries:
   nb.vms: >
     query Vms
     (
-      $get_cf: Boolean = false,
       $get_cluster: Boolean = false,
       $get_custom_field_data: Boolean = false,
       $get__custom_field_data: Boolean = false,
@@ -1047,7 +1039,6 @@ queries:
           id @include(if: $get_id)
           name
         }
-        _custom_field_data @include(if: $get_cf)
         _custom_field_data @include(if: $get__custom_field_data)
         custom_field_data : _custom_field_data @include(if: $get_custom_field_data)
         primary_ip4 @include(if: $get_primary_ip4)
