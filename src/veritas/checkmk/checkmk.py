@@ -331,14 +331,10 @@ class Checkmk:
             success or failure
         """    
         if bulk:
-            data = []
-            for device in devices:
-                data.append(device.get('host_name'))
-
             # the BULK delete is a POST request to check mk
-            response = self._checkmk.post(url="/domain-types/host_config/actions/bulk-delete/invoke", json={'entries': data})
+            response = self._checkmk.post(url="/domain-types/host_config/actions/bulk-delete/invoke", json={'entries': devices})
             if response.status_code == 200 or response.status_code == 204 :
-                logger.debug(f'hosts {data} successfully deleted')
+                logger.debug(f'hosts {len(devices)} successfully deleted')
                 return True
             else:
                 logger.error(f'error removing hosts; status {response.status_code}; error: {response.content}')
