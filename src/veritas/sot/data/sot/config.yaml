@@ -380,6 +380,7 @@ queries:
           {
             id @include(if: $get_id)
             name
+            description
             location_type
             {
               id @include(if: $get_id)
