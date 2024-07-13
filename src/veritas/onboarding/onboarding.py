@@ -1207,7 +1207,6 @@ class Onboarding():
         return None
 
     def get_primary_interface(self, primary_address, device_properties=None):
-
         """return primary interface of device
         
         there are two cases:
@@ -1271,7 +1270,7 @@ class Onboarding():
             del primary_interface['ip']
         return primary_interface
 
-    def get_device_properties(self):
+    def get_device_properties(self, use_default=True):
         """get device properties"""
 
         # we use our plugin architecture to use the right module
@@ -1283,7 +1282,7 @@ class Onboarding():
             logger.critical(f'failed to get device properties for platform {platform}')
             raise Exception ('unknown platform')
 
-        device_properties = dict(self._device_defaults)
+        device_properties = dict(self._device_defaults) if use_default else {}
         obj = get_dp(self._sot, self._device_facts, self._configparser, self._onboarding_config)
         obj.get_device_properties(device_properties)
         if not device_properties:
@@ -1346,6 +1345,10 @@ class Onboarding():
                                    device_facts, 
                                    self._configparser, 
                                    self._onboarding_config)
+
+    def set_device_properties(self, device_properties):
+        """set device properties"""
+        self._device_properties = device_properties
 
     def add_tags(self, hostname, tag_properties, device=None):
         """add device and interface tags to device"""
