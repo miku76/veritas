@@ -299,7 +299,7 @@ class Getter(object):
         """
         return self._sot.ipam.get_vlans(*unnamed, **named)
 
-    def hldm(self, device:str, get_id:bool=True) -> dict:
+    def hldm(self, device:str=None, device_id:str=None, get_id:bool=True) -> dict:
         """get HLDM (high level data model) of device
 
         Parameters
@@ -313,21 +313,52 @@ class Getter(object):
         -------
         dict
             the HLDM of the device
-        """        
+        """    
         # select ALL possible values
         select = ['asset_tag', 'custom_fields', 'config_context', 'device_bays',
                   'device_type','interfaces' , 'local_config_context_data', 
                   'location' , 'name', 'parent_bay', 'primary_ip4',
                   'platform', 'position', 'rack' , 'role', 'serial', 'status',
                   'tags', 'tenant']
-
         if get_id:
             select.append('id')
 
         using = 'nb.devices'
-        where = {'name': device}
+        if device_id:
+            where = {'id': device_id}
+        else:
+            where = {'name': device}
+        logger.debug(f'getting HLDM of device {device}')
         return self.query(select=select, using=using, where=where)
     
+    def core_attributes(self, device:str=None, device_id:str=None, get_id:bool=False) -> dict:
+        """get core attributes of device
+
+        Parameters
+        ----------
+        device : str
+            name of the device
+        get_id : bool, optional
+            if true get id from device, by default True
+
+        Returns
+        -------
+        dict
+            core attributes of the device
+        """    
+        # select ALL possible values
+        select = ['name', 'location','status']
+        if get_id:
+            select.append('id')
+
+        using = 'nb.devices'
+        if device_id:
+            where = {'id': device_id}
+        else:
+            where = {'name': device}
+        logger.debug(f'getting core attributes of device {device}')
+        return self.query(select=select, using=using, where=where)
+
     def changes(self, *unnamed, **named):
         pass
 
