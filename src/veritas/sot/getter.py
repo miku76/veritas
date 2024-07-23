@@ -1,4 +1,3 @@
-import json
 from loguru import logger
 from pynautobot import models
 
@@ -39,15 +38,13 @@ class Getter(object):
         """return nautobot object"""
         return self._nautobot
 
-    def device(self, name:str, by_id:bool=False) -> models.dcim.Devices:
+    def device(self, name:str) -> models.dcim.Devices:
         """get device from nautobot
 
         Parameters
         ----------
         name : str
-            name or id of the device
-        by_id : bool, optional
-            get device by id, by default False
+            name of the device
 
         Returns
         -------
@@ -57,13 +54,7 @@ class Getter(object):
         # name can be either the name (in most cases) or the id
 
         if self._api == "rest":
-            if by_id:
-                return self._rest.get(url=f"api/dcim/devices/?id={name}&depth={self._depth}", format=self._rst_frmt)
-            else:
-                return self._rest.get(url=f"api/dcim/devices/?name={name}&depth={self._depth}", format=self._rst_frmt)
-
-        if by_id:
-            return self._nautobot.dcim.devices.get(id=name)
+            return self._rest.get(url=f"api/dcim/devices/?name={name}&depth={self._depth}", format=self._rst_frmt)
         else:
             return self._nautobot.dcim.devices.get(name=name)
 
@@ -79,49 +70,49 @@ class Getter(object):
 
         Returns
         -------
-        device : Endpoint | str
-            name or Endpoint of the device
+        device : Endpoint | str | None
+            name or Endpoint of the device 
+            None if no device was found
         """
 
         if self._api == "rest":
             addr = self._rest.get(url=f"api/ipam/ip-addresses/?address={ip}&depth=2", format="json")
-            if addr.get('count',0) == 0:
+            if addr.get('count', 0) == 0:
                 return None
             interfaces = addr['results'][0].get('interfaces')
-            for iface in interfaces:
-                device = iface.get('device')
-                if device:
-                    id = device.get('id')
-                    if id:
-                        return self._rest.get(url=f"api/dcim/devices/?id={id}&depth={self._depth}", format=self._rst_frmt)
+            for interface in interfaces:
+                device = interface.get('device')
+                if device and device.get('id'):
+                    return self._rest.get(url=f"api/dcim/devices/?id={device.get('id')}&depth={self._depth}", format=self._rst_frmt)
             return None
   
-        interfaces = self.query(select=['interfaces'], 
-                                using='nb.ipaddresses',
-                                where={'address': ip}, 
-                                mode='sql')
+        ip = self._nautobot.ipam.ip_addresses.get(address=ip)
+        if not ip:
+            return None
+        devices = [interface.device for interface in ip.interfaces]
+        if len(devices) == 0:
+            logger.debug(f'no device found in sot with IP address {ip}')
+            return None
+        elif len(devices) > 0:
+            logger.debug(f'found more than one device in sot with IP address {ip}')
 
-        if interfaces and len(interfaces) > 0 and len(interfaces[0].get('interfaces', [])) > 0:
-            device = interfaces[0].get('interfaces', {})[0].get('device',{}).get('name')
-            logger.debug(f'found device in sot; device={device}')
-            if cast:
-                return device
-            else:
-                return self._nautobot.dcim.devices.get(name=device)
-        return None
+        if cast:
+            return devices[0].name
+        else:
+            return devices[0]
 
     def device_by_id(self, id:str) -> models.dcim.Devices:
         if self._api == "rest":
             return self._rest.get(url=f"api/dcim/devices/?id={id}&depth={self._depth}", format=self._rst_frmt)
         else:
-            return self.device(name=id, by_id=id)
+            return self._nautobot.dcim.devices.get(id=id)
 
-    def device_by_serial(self, serial_number) -> models.dcim.Devices | str:
+    def device_by_serial(self, serial) -> models.dcim.Devices | str:
         """get device by using an a serial number
 
         Parameters
         ----------
-        serial_number: 
+        serial: 
             the serial number to look up
 
         Returns
@@ -130,12 +121,9 @@ class Getter(object):
             Endpoint of the device or None
         """
         if self._api == "rest":
-            return self._rest.get(url=f"api/dcim/devices/?serial={serial_number}&depth={self._depth}", format=self._rst_frmt)
-
-        return self.query(select=['id', 'name'], 
-                          using='nb.devices',
-                          where={'serial': serial_number}, 
-                          mode='sql')
+            return self._rest.get(url=f"api/dcim/devices/?serial={serial}&depth={self._depth}", format=self._rst_frmt)
+        else:
+            return self._nautobot.dcim.devices.get(serial=serial)
     
     def primary_ip4(self, name:str, cast:bool=False) -> models.ipam.IpAddresses | str:
         """get primary IP4 of the device

@@ -1182,10 +1182,10 @@ class Onboarding():
         logger.debug(f'address {ip} belongs to {device_in_nb}')
         return device_in_nb
 
-    def check_serial(self, serial_number):
+    def check_serial(self, serial):
         """check if seerial number is already in sot"""
 
-        return self._sot.get.device_by_serial(serial_number=serial_number)
+        return self._sot.get.device_by_serial(serial=serial)
 
     def get_primary_address(self):
         """return primary address of device depending on the configured 
